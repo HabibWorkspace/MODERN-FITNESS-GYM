@@ -198,7 +198,7 @@ export default function AdminFinance() {
             margin-bottom: 12px;
           }
           .logo {
-            width: 80px;
+            width: 250px;
             height: auto;
             margin: 0 auto 8px;
             display: block;

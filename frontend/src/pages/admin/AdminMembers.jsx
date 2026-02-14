@@ -402,7 +402,7 @@ export default function AdminMembers() {
             page-break-after: avoid;
           }
           .logo {
-            width: 220px;
+            width: 350px;
             height: 220px;
             margin: 0 auto 30px;
             display: block;
