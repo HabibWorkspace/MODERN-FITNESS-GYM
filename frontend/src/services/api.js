@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fitcore-smec.onrender.com/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fitcore-backend.onrender.com/api'
 
 // Create axios instance
 const apiClient = axios.create({
