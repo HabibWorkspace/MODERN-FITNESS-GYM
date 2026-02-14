@@ -336,7 +336,7 @@ export default function AdminFinance() {
         </div>
 
         <div class="header">
-          <img src="${window.location.origin}${modernLogo}" alt="Modern Fitness Gym Logo" class="logo" />
+          <img src="https://habibworkspace.github.io/MODERN-FITNESS-GYM/modern-fitness-logo.png" alt="Modern Fitness Gym Logo" class="logo" />
           <div class="gym-name">Modern Fitness Gym</div>
           <div class="receipt-title">Payment Receipt</div>
         </div>
