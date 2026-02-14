@@ -1,0 +1,433 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(135deg, #0A0A0A 0%, #1C1C1E 100%);
+  color: #F5F5F7;
+  min-height: 100vh;
+}
+
+code {
+  font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom Components */
+@layer components {
+  /* Typography Utilities */
+  .text-body {
+    @apply font-normal text-base leading-relaxed;
+  }
+  
+  .text-label {
+    @apply font-semibold text-sm uppercase tracking-wider;
+  }
+  
+  .text-heading {
+    @apply font-bold text-lg;
+  }
+  
+  .text-section-heading {
+    @apply font-bold text-2xl;
+  }
+  
+  .text-stat {
+    @apply font-extrabold text-4xl;
+  }
+  
+  .text-key-value {
+    @apply font-bold text-xl;
+  }
+  
+  /* Card Components - Reduced glow effects */
+  .fitnix-card {
+    @apply bg-fitnix-charcoal/80 backdrop-blur-xl border border-fitnix-lime/10 rounded-2xl p-6 transition-all duration-300;
+  }
+  
+  .fitnix-card-hover {
+    @apply bg-fitnix-charcoal/60 backdrop-blur-lg border border-fitnix-lime/10 rounded-2xl p-5 hover:bg-fitnix-charcoal/80 hover:border-fitnix-lime/40 transition-all duration-300 cursor-pointer transform hover:scale-[1.01];
+  }
+  
+  .fitnix-card-glow {
+    @apply bg-gradient-to-br from-fitnix-charcoal/90 to-fitnix-black/90 backdrop-blur-xl border-2 border-fitnix-lime/10 rounded-2xl p-6 transition-all duration-300;
+  }
+  
+  /* Icon Gradients - More vibrant */
+  .fitnix-icon-gradient-lime {
+    @apply bg-gradient-to-br from-fitnix-lime via-fitnix-lime-glow to-fitnix-dark-lime shadow-neon-lime;
+  }
+  
+  .fitnix-icon-gradient-cyan {
+    @apply bg-gradient-to-br from-fitnix-cyan to-fitnix-blue shadow-neon-cyan;
+  }
+  
+  .fitnix-icon-gradient-orange {
+    @apply bg-gradient-to-br from-fitnix-orange to-amber-600;
+  }
+  
+  .fitnix-icon-gradient-red {
+    @apply bg-gradient-to-br from-fitnix-red to-red-700;
+  }
+  
+  .fitnix-icon-gradient-purple {
+    @apply bg-gradient-to-br from-fitnix-purple to-purple-700 shadow-neon-purple;
+  }
+  
+  /* Button Components - Reduced glow effects */
+  .fitnix-button-primary {
+    @apply bg-gradient-to-r from-fitnix-lime to-fitnix-lime-glow text-fitnix-black font-bold px-6 py-3 rounded-xl hover:from-fitnix-dark-lime hover:to-fitnix-lime transition-all duration-300 shadow-md hover:scale-105 active:scale-95;
+  }
+  
+  .fitnix-button-secondary {
+    @apply bg-fitnix-charcoal/80 backdrop-blur-lg text-fitnix-off-white border-2 border-fitnix-lime/30 font-semibold px-6 py-3 rounded-xl hover:border-fitnix-lime hover:text-fitnix-lime transition-all duration-300 hover:scale-105 active:scale-95;
+  }
+  
+  .fitnix-button-danger {
+    @apply bg-gradient-to-r from-red-600 to-red-700 text-white font-bold px-5 py-2.5 rounded-xl hover:from-red-500 hover:to-red-600 transition-all duration-300 shadow-md hover:scale-105 active:scale-95;
+  }
+  
+  .fitnix-button-info {
+    @apply bg-gradient-to-r from-cyan-600/30 to-cyan-700/30 backdrop-blur-lg text-cyan-300 border-2 border-cyan-500/50 font-bold px-5 py-2.5 rounded-xl hover:from-cyan-600/50 hover:to-cyan-700/50 transition-all duration-300 hover:scale-105 active:scale-95;
+  }
+  
+  .fitnix-button-warning {
+    @apply bg-gradient-to-r from-amber-600 to-amber-700 text-fitnix-black font-bold px-5 py-2.5 rounded-xl hover:from-amber-500 hover:to-amber-600 transition-all duration-300 shadow-md hover:scale-105 active:scale-95;
+  }
+  
+  /* Input Components - Reduced glow on focus */
+  .fitnix-input {
+    @apply bg-fitnix-charcoal/80 backdrop-blur-lg border-2 border-fitnix-lime/20 text-fitnix-off-white rounded-xl px-4 py-3 focus:outline-none focus:border-fitnix-lime focus:ring-1 focus:ring-fitnix-lime/30 transition-all duration-300 font-normal placeholder:text-fitnix-gray;
+  }
+  
+  .fitnix-label {
+    @apply block text-fitnix-off-white font-semibold mb-2 text-sm uppercase tracking-wider;
+  }
+  
+  /* Navigation Items - Reduced glow */
+  .fitnix-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-fitnix-off-white/80 hover:text-fitnix-lime hover:bg-fitnix-charcoal/60 transition-all duration-300 font-medium;
+  }
+  
+  .fitnix-nav-item.active {
+    @apply text-fitnix-lime bg-fitnix-charcoal/80 font-bold;
+  }
+  
+  /* Metric Card - Reduced glow on hover */
+  .fitnix-metric-card {
+    @apply fitnix-card-hover transition-all duration-300 cursor-pointer transform hover:-translate-y-1;
+  }
+  
+  /* Gradient Text - Enhanced */
+  .fitnix-gradient-text {
+    @apply bg-gradient-to-r from-fitnix-lime via-fitnix-lime-glow to-fitnix-lime bg-clip-text text-transparent font-extrabold;
+  }
+  
+  /* Badge Components */
+  .fitnix-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide;
+  }
+  
+  .fitnix-badge-success {
+    @apply fitnix-badge bg-green-500/20 text-green-400 border border-green-500/50;
+  }
+  
+  .fitnix-badge-warning {
+    @apply fitnix-badge bg-amber-500/20 text-amber-400 border border-amber-500/50;
+  }
+  
+  .fitnix-badge-danger {
+    @apply fitnix-badge bg-red-500/20 text-red-400 border border-red-500/50;
+  }
+  
+  .fitnix-badge-info {
+    @apply fitnix-badge bg-cyan-500/20 text-cyan-400 border border-cyan-500/50;
+  }
+  
+  /* Table Enhancements */
+  .fitnix-table-header {
+    @apply bg-fitnix-black/80 backdrop-blur-lg border-b-2 border-fitnix-lime/30;
+  }
+  
+  .fitnix-table-row {
+    @apply hover:bg-fitnix-charcoal/60 transition-all duration-200 border-b border-fitnix-lime/5;
+  }
+  
+  .fitnix-table-row-alt {
+    @apply bg-fitnix-charcoal/20;
+  }
+}
+
+.offline-indicator {
+  @apply fixed bottom-4 right-4 bg-gradient-to-r from-red-600 to-red-700 text-white px-5 py-3 rounded-xl shadow-lg backdrop-blur-lg border border-red-500/50 font-bold;
+}
+
+.loading-spinner {
+  @apply inline-block animate-spin;
+}
+
+/* Enhanced Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #8BC34A 0%, #B6FF00 100%);
+  border-radius: 10px;
+  border: 2px solid #0A0A0A;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #B6FF00 0%, #D4FF33 100%);
+  box-shadow: 0 0 10px rgba(182, 255, 0, 0.5);
+}
+
+/* Custom Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0px);
+  }
+  25% {
+    transform: translateY(-20px);
+  }
+  50% {
+    transform: translateY(-40px);
+  }
+  75% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes float-down {
+  0% {
+    transform: translateY(0px);
+  }
+  25% {
+    transform: translateY(20px);
+  }
+  50% {
+    transform: translateY(40px);
+  }
+  75% {
+    transform: translateY(20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes drift-right {
+  0% {
+    transform: translateX(0px);
+  }
+  25% {
+    transform: translateX(25px);
+  }
+  50% {
+    transform: translateX(50px);
+  }
+  75% {
+    transform: translateX(25px);
+  }
+  100% {
+    transform: translateX(0px);
+  }
+}
+
+@keyframes drift-left {
+  0% {
+    transform: translateX(0px);
+  }
+  25% {
+    transform: translateX(-25px);
+  }
+  50% {
+    transform: translateX(-50px);
+  }
+  75% {
+    transform: translateX(-25px);
+  }
+  100% {
+    transform: translateX(0px);
+  }
+}
+
+@keyframes float-circular {
+  0% {
+    transform: translate(0px, 0px);
+  }
+  25% {
+    transform: translate(30px, -30px);
+  }
+  50% {
+    transform: translate(0px, -60px);
+  }
+  75% {
+    transform: translate(-30px, -30px);
+  }
+  100% {
+    transform: translate(0px, 0px);
+  }
+}
+
+@keyframes float-circular-reverse {
+  0% {
+    transform: translate(0px, 0px);
+  }
+  25% {
+    transform: translate(-30px, 30px);
+  }
+  50% {
+    transform: translate(0px, 60px);
+  }
+  75% {
+    transform: translate(30px, 30px);
+  }
+  100% {
+    transform: translate(0px, 0px);
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+.floating-fitness-icon {
+  cursor: pointer;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Particles.js Container */
+#particles-js {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+}
+
+#particles-js canvas {
+  display: block;
+  pointer-events: auto;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(28, 28, 30, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(182, 255, 0, 0.1);
+}
+
+/* Neon glow effect */
+.neon-glow {
+  text-shadow: 0 0 10px rgba(182, 255, 0, 0.8),
+               0 0 20px rgba(182, 255, 0, 0.6),
+               0 0 30px rgba(182, 255, 0, 0.4);
+}
+
+/* Shimmer effect for loading states */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(28, 28, 30, 0) 0%,
+    rgba(182, 255, 0, 0.1) 50%,
+    rgba(28, 28, 30, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float-contained {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(var(--move-x), calc(var(--move-y) * 0.5));
+  }
+  50% {
+    transform: translate(calc(var(--move-x) * 0.7), var(--move-y));
+  }
+  75% {
+    transform: translate(calc(var(--move-x) * -0.5), calc(var(--move-y) * 0.8));
+  }
+}
