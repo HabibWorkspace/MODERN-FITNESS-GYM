@@ -97,6 +97,15 @@ def create_app(config=None):
         app.logger.info(f"Headers: {dict(request.headers)}")
         app.logger.info(f"{'='*60}\n")
     
+    # Health check endpoint for uptime monitoring
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        """Simple health check endpoint to keep server alive."""
+        return jsonify({
+            'status': 'healthy',
+            'message': 'FitCore backend is running'
+        }), 200
+    
     # Add catch-all 404 handler
     @app.errorhandler(404)
     def not_found(error):
