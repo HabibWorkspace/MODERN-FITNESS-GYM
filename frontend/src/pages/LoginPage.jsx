@@ -487,6 +487,13 @@ export default function LoginPage() {
                   'Login'
                 )}
               </button>
+              
+              {/* Loading message for slow backend */}
+              {loading && (
+                <p className="text-center text-fitnix-lime/70 text-xs mt-2 animate-pulse">
+                  First login may take up to 60 seconds while server wakes up...
+                </p>
+              )}
             </form>
           </div>
 
