@@ -14,13 +14,8 @@ export default function AdminFinance() {
   const [success, setSuccess] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const navigate = useNavigate()
-
-  // Filter states
-  const [selectedMember, setSelectedMember] = useState('all')
-  const [selectedStatus, setSelectedStatus] = useState('all')
-  const [selectedMonth, setSelectedMonth] = useState('')
   const [filteredTransactions, setFilteredTransactions] = useState([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchData()
@@ -36,10 +31,10 @@ export default function AdminFinance() {
     }
   }, [error, success])
 
-  // Apply filters whenever transactions or filter values change
+  // Apply filters whenever transactions or search query changes
   useEffect(() => {
     applyFilters()
-  }, [transactions, selectedMember, selectedStatus, selectedMonth, searchQuery])
+  }, [transactions, searchQuery])
 
   const applyFilters = () => {
     let filtered = [...transactions]
@@ -67,27 +62,6 @@ export default function AdminFinance() {
       })
     }
 
-    // Filter by member
-    if (selectedMember !== 'all') {
-      filtered = filtered.filter(t => t.member_id === selectedMember)
-    }
-
-    // Filter by status
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(t => t.status === selectedStatus)
-    }
-
-    // Filter by month
-    if (selectedMonth) {
-      const [year, month] = selectedMonth.split('-')
-      filtered = filtered.filter(t => {
-        if (!t.due_date) return false
-        const dueDate = new Date(t.due_date)
-        return dueDate.getFullYear() === parseInt(year) && 
-               (dueDate.getMonth() + 1) === parseInt(month)
-      })
-    }
-
     setFilteredTransactions(filtered)
   }
 
@@ -103,13 +77,6 @@ export default function AdminFinance() {
     if (e.key === 'Enter') {
       handleSearch()
     }
-  }
-
-  const handleResetFilters = () => {
-    setSelectedMember('all')
-    setSelectedStatus('all')
-    setSelectedMonth('')
-    setSearchQuery('')
   }
 
   const fetchData = async () => {
@@ -599,73 +566,6 @@ export default function AdminFinance() {
               Showing {filteredTransactions.length} of {transactions.length} transactions
             </p>
           )}
-        </div>
-
-        {/* Filter Section */}
-        <div className="fitnix-card-glow p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            {/* Member Filter */}
-            <div>
-              <label className="block text-sm font-semibold text-fitnix-off-white mb-2">
-                Member
-              </label>
-              <select
-                value={selectedMember}
-                onChange={(e) => setSelectedMember(e.target.value)}
-                className="w-full bg-fitnix-black text-fitnix-off-white border border-fitnix-off-white/20 rounded-lg px-4 py-2.5 focus:outline-none focus:border-fitnix-lime transition-colors"
-              >
-                <option value="all">All Members</option>
-                {Object.values(members).map(member => (
-                  <option key={member.id} value={member.id}>
-                    {member.full_name || member.username}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-semibold text-fitnix-off-white mb-2">
-                Status
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full bg-fitnix-black text-fitnix-off-white border border-fitnix-off-white/20 rounded-lg px-4 py-2.5 focus:outline-none focus:border-fitnix-lime transition-colors"
-              >
-                <option value="all">All Status</option>
-                <option value="PENDING">PENDING</option>
-                <option value="OVERDUE">OVERDUE</option>
-                <option value="COMPLETED">COMPLETED</option>
-              </select>
-            </div>
-
-            {/* Month Filter */}
-            <div>
-              <label className="block text-sm font-semibold text-fitnix-off-white mb-2">
-                Month
-              </label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full bg-fitnix-black text-fitnix-off-white border border-fitnix-off-white/20 rounded-lg px-4 py-2.5 focus:outline-none focus:border-fitnix-lime transition-colors hover:border-fitnix-lime/50 cursor-pointer"
-                style={{
-                  colorScheme: 'dark'
-                }}
-              />
-            </div>
-
-            {/* Reset Button */}
-            <div>
-              <button
-                onClick={handleResetFilters}
-                className="w-full bg-fitnix-charcoal hover:bg-fitnix-black text-fitnix-off-white font-bold py-2.5 px-6 rounded-lg transition-all border border-fitnix-off-white/20 hover:border-fitnix-lime/50"
-              >
-                Reset Filters
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="fitnix-card overflow-hidden" style={{ border: 'none' }}>
