@@ -157,16 +157,19 @@ export default function AdminMembers() {
     setError('')
     setSuccess('')
     
-    // Validation
-    if (!formData.full_name || !formData.email || !formData.phone) {
-      setError('Full Name, Email, and Phone are required')
+    // Validation - only full name and phone are required
+    if (!formData.full_name || !formData.phone) {
+      setError('Full Name and Phone are required')
       return
     }
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address')
-      return
+    // Validate email format only if provided
+    if (formData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email)) {
+        setError('Please enter a valid email address')
+        return
+      }
     }
     
     if (!editingMember && !formData.waive_admission_fee) {
@@ -799,15 +802,14 @@ export default function AdminMembers() {
                 
                 <div>
                   <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
-                    Email <span className="text-red-500">*</span>
+                    Email
                   </label>
                   <input
                     type="email"
-                    placeholder="Enter email address"
+                    placeholder="Enter email address (optional)"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="fitnix-input"
-                    required
                   />
                 </div>
                 
