@@ -141,12 +141,16 @@ def create_member():
                 package_expiry_date = package_start_date + timedelta(days=package.duration_days)
         
         # Create member profile
+        # Convert empty strings to None for optional fields
+        cnic_value = data.get('cnic') if data.get('cnic') else None
+        email_value = data.get('email') if data.get('email') else None
+        
         member = MemberProfile(
             user_id=user.id,
             full_name=data['full_name'],
             phone=data['phone'],
-            cnic=data.get('cnic'),  # Optional
-            email=data.get('email'),  # Optional
+            cnic=cnic_value,  # None if empty
+            email=email_value,  # None if empty
             gender=data.get('gender'),
             date_of_birth=dob,
             admission_date=admission_date,
