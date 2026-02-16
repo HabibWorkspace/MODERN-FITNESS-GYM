@@ -75,7 +75,7 @@ export default function AdminFinance() {
 
   const fetchData = async () => {
     try {
-      const cacheParam = `?_t=${Date.now()}`
+      const cacheParam = `?per_page=1000&_t=${Date.now()}`
       const [paymentsRes, packagesRes, membersRes] = await Promise.all([
         apiClient.get(`/admin/finance/member-payments-fixed${cacheParam}`),
         apiClient.get(`/packages${cacheParam}`),

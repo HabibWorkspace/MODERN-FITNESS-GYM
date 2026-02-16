@@ -59,8 +59,8 @@ export default function AdminMembers() {
 
   const fetchMembers = async () => {
     try {
-      // Add cache buster to force fresh data
-      const response = await apiClient.get(`/admin/members?_t=${Date.now()}`, {
+      // Add cache buster to force fresh data and request all members
+      const response = await apiClient.get(`/admin/members?per_page=1000&_t=${Date.now()}`, {
         headers: { 
           'Cache-Control': 'no-cache', 
           'Pragma': 'no-cache',
