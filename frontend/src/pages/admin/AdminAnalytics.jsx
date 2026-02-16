@@ -257,14 +257,24 @@ export default function AdminAnalytics() {
 
     const data = Object.values(packageCounts)
 
-    // Generate distinct colors dynamically
+    // Generate up to 50 distinct colors dynamically
     const generateColors = (count) => {
       const colors = []
-      const saturation = 70
-      const lightness = 55
+      
+      // Use multiple saturation and lightness levels for more variety
+      const saturations = [60, 70, 80, 90]
+      const lightnesses = [45, 55, 65]
+      
+      let colorIndex = 0
       
       for (let i = 0; i < count; i++) {
-        const hue = (i * 360 / count) % 360
+        // Calculate hue with golden ratio for better distribution
+        const hue = (i * 137.508) % 360 // Golden angle for better color distribution
+        
+        // Cycle through different saturation and lightness values
+        const saturation = saturations[Math.floor(i / 12) % saturations.length]
+        const lightness = lightnesses[Math.floor(i / 4) % lightnesses.length]
+        
         colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`)
       }
       
