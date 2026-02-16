@@ -7,6 +7,8 @@ import modernLogo from '/modern-fitness-logo.png'
 
 export default function AdminMembers() {
   const [members, setMembers] = useState([])
+  const [filteredMembers, setFilteredMembers] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [packages, setPackages] = useState([])
   const [trainers, setTrainers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -72,6 +74,7 @@ export default function AdminMembers() {
         }
       })
       setMembers(response.data.members || [])
+      setFilteredMembers(response.data.members || [])
     } catch (err) {
       setError('Failed to load members')
       console.error(err)
@@ -423,6 +426,46 @@ export default function AdminMembers() {
 
   const cancelToggleFreeze = () => {
     setConfirmFreeze(null)
+  }
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+      setFilteredMembers(members)
+      return
+    }
+
+    const query = searchQuery.toLowerCase().trim()
+    const filtered = members.filter(member => {
+      // Search by member_number (ID)
+      if (member.member_number && member.member_number.toString().includes(query)) {
+        return true
+      }
+      // Search by full name
+      if (member.full_name && member.full_name.toLowerCase().includes(query)) {
+        return true
+      }
+      // Search by phone
+      if (member.phone && member.phone.toLowerCase().includes(query)) {
+        return true
+      }
+      // Search by email
+      if (member.email && member.email.toLowerCase().includes(query)) {
+        return true
+      }
+      return false
+    })
+    setFilteredMembers(filtered)
+  }
+
+  const handleClearSearch = () => {
+    setSearchQuery('')
+    setFilteredMembers(members)
+  }
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
   }
 
   const handlePrintReceipt = (member) => {
@@ -1292,11 +1335,50 @@ export default function AdminMembers() {
           </form>
         )}
 
+        {/* Search Bar */}
+        <div className="fitnix-card mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="w-5 h-5 text-fitnix-off-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search members by name, phone, or email... (Press Enter or click Go)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                className="w-full pl-12 pr-4 py-3 bg-fitnix-charcoal border border-fitnix-off-white/20 rounded-lg text-fitnix-off-white placeholder-fitnix-off-white/40 focus:outline-none focus:border-fitnix-lime focus:ring-1 focus:ring-fitnix-lime transition-colors"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="px-6 py-3 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black font-semibold rounded-lg transition-colors"
+            >
+              Go
+            </button>
+            <button
+              onClick={handleClearSearch}
+              className="px-6 py-3 bg-fitnix-charcoal hover:bg-fitnix-charcoal/80 text-fitnix-off-white font-semibold rounded-lg border border-fitnix-off-white/20 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+          {searchQuery && (
+            <p className="mt-3 text-sm text-fitnix-off-white/60">
+              Showing {filteredMembers.length} of {members.length} members
+            </p>
+          )}
+        </div>
+
         <div className="fitnix-card overflow-hidden" style={{ border: 'none' }}>
           <div className="overflow-x-auto">
             <table className="w-full table-auto">
               <thead>
                 <tr className="bg-fitnix-black border-b-2 border-fitnix-lime/30">
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">ID</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Photo</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Full Name</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Phone</th>
@@ -1310,22 +1392,25 @@ export default function AdminMembers() {
                 </tr>
               </thead>
               <tbody className="bg-fitnix-charcoal/30">
-                {members.length === 0 ? (
+                {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="px-6 py-12 text-center">
+                    <td colSpan="11" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <svg className="w-16 h-16 text-fitnix-off-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        <p className="text-fitnix-off-white/60 text-lg">No members found</p>
-                        <p className="text-fitnix-off-white/40 text-sm">Add your first member to get started</p>
+                        <p className="text-fitnix-off-white/60 text-lg">{searchQuery ? 'No members found matching your search' : 'No members found'}</p>
+                        <p className="text-fitnix-off-white/40 text-sm">{searchQuery ? 'Try a different search term' : 'Add your first member to get started'}</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  members.map((member, index) => {
+                  filteredMembers.map((member, index) => {
                     return (
                       <tr key={member.id} className={`hover:bg-fitnix-black/50 transition-colors border-b border-fitnix-lime/10 ${index % 2 === 0 ? 'bg-fitnix-charcoal/20' : 'bg-fitnix-charcoal/40'}`}>
+                        <td className="px-6 py-6 text-base text-fitnix-lime font-semibold whitespace-nowrap">
+                          #{member.member_number || 'N/A'}
+                        </td>
                         <td className="px-6 py-6">
                           {member.profile_picture ? (
                             <img 
