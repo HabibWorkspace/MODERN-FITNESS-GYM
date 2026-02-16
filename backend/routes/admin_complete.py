@@ -89,15 +89,19 @@ def create_member():
     """Create a new member."""
     data = request.get_json()
     
-    # Validate required fields (no username/password needed)
-    required_fields = ['full_name', 'phone', 'cnic', 'email']
+    # Validate required fields (only full_name and phone are required)
+    required_fields = ['full_name', 'phone']
     for field in required_fields:
         if not data.get(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
     
     try:
-        # Create user with auto-generated username (email-based)
-        auto_username = data['email'].split('@')[0] + '_' + str(uuid.uuid4())[:8]
+        # Create user with auto-generated username
+        # Use email if provided, otherwise use phone
+        if data.get('email'):
+            auto_username = data['email'].split('@')[0] + '_' + str(uuid.uuid4())[:8]
+        else:
+            auto_username = 'member_' + data['phone'][-4:] + '_' + str(uuid.uuid4())[:8]
         auto_password = str(uuid.uuid4())
         
         user = User(
@@ -141,8 +145,8 @@ def create_member():
             user_id=user.id,
             full_name=data['full_name'],
             phone=data['phone'],
-            cnic=data['cnic'],
-            email=data['email'],
+            cnic=data.get('cnic'),  # Optional
+            email=data.get('email'),  # Optional
             gender=data.get('gender'),
             date_of_birth=dob,
             admission_date=admission_date,
