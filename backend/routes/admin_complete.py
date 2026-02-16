@@ -917,11 +917,16 @@ def get_member_payments_fixed():
 @admin_complete_bp.route('/finance/transactions/<transaction_id>/mark-paid', methods=['POST'])
 @require_admin
 def mark_transaction_paid(transaction_id):
-    """Mark a transaction as paid."""
+    """Mark a transaction as paid and create next month's transaction."""
     try:
         transaction = Transaction.query.get(transaction_id)
         if not transaction:
             return jsonify({'error': 'Transaction not found'}), 404
+        
+        # Get member info
+        member = MemberProfile.query.get(transaction.member_id)
+        if not member:
+            return jsonify({'error': 'Member not found'}), 404
         
         # Update transaction status and paid date
         transaction.status = TransactionStatus.COMPLETED
@@ -929,14 +934,48 @@ def mark_transaction_paid(transaction_id):
         
         # If this is an admission fee, mark admission_fee_paid on member
         if transaction.transaction_type.value == 'ADMISSION':
-            member = MemberProfile.query.get(transaction.member_id)
             if member:
                 member.admission_fee_paid = True
+        
+        # Create next month's transaction automatically (only for MONTHLY type or if member has active package)
+        # Don't create for frozen members
+        if not member.is_frozen and member.current_package_id:
+            # Get package details
+            package = Package.query.get(member.current_package_id)
+            if package and package.is_active:
+                # Calculate next month's due date (30 days from current due date)
+                next_due_date = transaction.due_date + timedelta(days=30) if transaction.due_date else datetime.utcnow() + timedelta(days=30)
+                
+                # Get trainer fee if trainer is assigned
+                trainer_fee = 0
+                if member.trainer_id:
+                    trainer = TrainerProfile.query.get(member.trainer_id)
+                    if trainer:
+                        trainer_fee = float(trainer.salary_rate) if trainer.salary_rate else 0
+                
+                # Calculate total amount (package price + trainer fee)
+                package_price = float(package.price) if package.price else 0
+                total_amount = package_price + trainer_fee
+                
+                # Create new transaction for next month
+                new_transaction = Transaction(
+                    member_id=member.id,
+                    amount=total_amount,
+                    transaction_type=TransactionType.PAYMENT,
+                    status=TransactionStatus.PENDING,
+                    due_date=next_due_date,
+                    trainer_fee=trainer_fee,
+                    package_price=package_price,
+                    discount_amount=0,
+                    discount_type='fixed',
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(new_transaction)
         
         db.session.commit()
         
         return jsonify({
-            'message': 'Transaction marked as paid',
+            'message': 'Transaction marked as paid and next month transaction created',
             'transaction': transaction.to_dict()
         }), 200
     except Exception as e:
