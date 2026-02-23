@@ -3,8 +3,8 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "pip install -r backend/requirements.txt",
   "functions": {
-    "backend/api/*.py": {
-      "runtime": "python3.9"
+    "backend/api/index.py": {
+      "runtime": "@vercel/python@4.3.0"
     }
   },
   "rewrites": [
