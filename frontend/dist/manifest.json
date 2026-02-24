@@ -2,8 +2,8 @@
   "name": "FitCore - Gym Management System",
   "short_name": "FitCore",
   "description": "Comprehensive gym management system with attendance tracking, diet logging, and progress monitoring",
-  "start_url": "/MODERN-FITNESS-GYM/",
-  "scope": "/MODERN-FITNESS-GYM/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#B6FF00",
@@ -11,7 +11,7 @@
   "categories": ["fitness", "health"],
   "icons": [
     {
-      "src": "/MODERN-FITNESS-GYM/fitcore-logo.png",
+      "src": "/fitcore-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
