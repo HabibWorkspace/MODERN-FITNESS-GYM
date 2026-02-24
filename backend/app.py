@@ -109,6 +109,22 @@ def create_app(config=None):
             'message': 'FitCore backend is running'
         }), 200
     
+    # Serve frontend static files
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_frontend(path):
+        """Serve frontend files for SPA routing."""
+        import os
+        frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+        
+        # If path is empty or doesn't exist, serve index.html
+        if path == '' or not os.path.exists(os.path.join(frontend_dir, path)):
+            return app.send_static_file('index.html') if os.path.exists(os.path.join(app.static_folder or '', 'index.html')) else send_from_directory(frontend_dir, 'index.html')
+        
+        # Serve the requested file
+        from flask import send_from_directory
+        return send_from_directory(frontend_dir, path)
+    
     # Add catch-all 404 handler
     @app.errorhandler(404)
     def not_found(error):
