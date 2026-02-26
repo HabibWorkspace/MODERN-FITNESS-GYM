@@ -64,18 +64,29 @@ for line in lines:
             if cursor.fetchone():
                 continue  # Skip if profile already exists
             
-            # Check if member_number already exists
-            parts = line.split(', ')
-            member_number = parts[2].strip()
-            if member_number != 'NULL':
-                cursor.execute("SELECT id FROM member_profiles WHERE member_number = ?", (int(member_number),))
-                if cursor.fetchone():
-                    # Find next available member number
-                    cursor.execute("SELECT MAX(member_number) FROM member_profiles")
-                    max_num = cursor.fetchone()[0] or 0
-                    new_number = max_num + 1
-                    line = line.replace(f', {member_number}, ', f', {new_number}, ', 1)
-                    print(f"  ⚠️  Member number {member_number} already exists, using {new_number}")
+            # Extract member_number more carefully
+            try:
+                # Find the VALUES part
+                values_part = line.split('VALUES (')[1]
+                # Split by comma and get the third value (member_number)
+                values = values_part.split(', ')
+                member_number_str = values[2].strip()
+                
+                if member_number_str != 'NULL':
+                    member_number = int(member_number_str)
+                    cursor.execute("SELECT id FROM member_profiles WHERE member_number = ?", (member_number,))
+                    if cursor.fetchone():
+                        # Find next available member number
+                        cursor.execute("SELECT MAX(member_number) FROM member_profiles")
+                        max_num = cursor.fetchone()[0] or 0
+                        new_number = max_num + 1
+                        # Replace the member number in the line
+                        values[2] = str(new_number)
+                        values_part = ', '.join(values)
+                        line = line.split('VALUES (')[0] + 'VALUES (' + values_part
+                        print(f"  ⚠️  Member number {member_number} already exists, using {new_number}")
+            except (ValueError, IndexError) as e:
+                pass  # If parsing fails, just try to insert as-is
             
             cursor.execute(line)
             profiles_inserted += 1
