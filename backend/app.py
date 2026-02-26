@@ -93,6 +93,23 @@ def create_app(config=None):
             'message': 'FitCore backend is running'
         }), 200
     
+    # Debug endpoint to check frontend path
+    @app.route('/api/debug/frontend-path', methods=['GET'])
+    def debug_frontend_path():
+        """Debug endpoint to check frontend directory path."""
+        import os
+        frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+        assets_dir = os.path.join(frontend_dir, 'assets')
+        return jsonify({
+            'frontend_dir': frontend_dir,
+            'frontend_exists': os.path.exists(frontend_dir),
+            'assets_dir': assets_dir,
+            'assets_exists': os.path.exists(assets_dir),
+            'assets_files': os.listdir(assets_dir) if os.path.exists(assets_dir) else [],
+            '__file__': __file__,
+            'dirname': os.path.dirname(__file__)
+        }), 200
+    
     # Serve frontend static files (must be after API routes)
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
@@ -105,21 +122,32 @@ def create_app(config=None):
         if path.startswith('api/'):
             return jsonify({'error': 'Not found', 'path': request.path}), 404
         
-        frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+        # Get absolute path to frontend dist directory
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(backend_dir)
+        frontend_dir = os.path.join(project_root, 'frontend', 'dist')
         
-        # Serve assets directory files directly
+        app.logger.info(f"Serving path: {path}")
+        app.logger.info(f"Frontend dir: {frontend_dir}")
+        
+        # Serve assets directory files directly with correct MIME types
         if path.startswith('assets/'):
             file_path = os.path.join(frontend_dir, path)
+            app.logger.info(f"Asset request: {file_path}, exists: {os.path.exists(file_path)}")
             if os.path.exists(file_path):
                 return send_from_directory(frontend_dir, path)
-            return jsonify({'error': 'Asset not found', 'path': path}), 404
+            return jsonify({'error': 'Asset not found', 'path': path, 'full_path': file_path}), 404
         
         # If requesting a file that exists, serve it
         if path and os.path.exists(os.path.join(frontend_dir, path)):
             return send_from_directory(frontend_dir, path)
         
         # Otherwise serve index.html for SPA routing
-        return send_from_directory(frontend_dir, 'index.html')
+        index_path = os.path.join(frontend_dir, 'index.html')
+        if os.path.exists(index_path):
+            return send_from_directory(frontend_dir, 'index.html')
+        
+        return jsonify({'error': 'Frontend not found', 'frontend_dir': frontend_dir}), 404
     
     # Add catch-all 404 handler
     @app.errorhandler(404)
