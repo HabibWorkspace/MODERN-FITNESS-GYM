@@ -107,6 +107,13 @@ def create_app(config=None):
         
         frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
         
+        # Serve assets directory files directly
+        if path.startswith('assets/'):
+            file_path = os.path.join(frontend_dir, path)
+            if os.path.exists(file_path):
+                return send_from_directory(frontend_dir, path)
+            return jsonify({'error': 'Asset not found', 'path': path}), 404
+        
         # If requesting a file that exists, serve it
         if path and os.path.exists(os.path.join(frontend_dir, path)):
             return send_from_directory(frontend_dir, path)
