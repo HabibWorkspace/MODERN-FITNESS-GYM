@@ -15,6 +15,8 @@ export default function AdminFinance() {
   const [showPrintModal, setShowPrintModal] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredTransactions, setFilteredTransactions] = useState([])
+  const [sortField, setSortField] = useState('due_date')
+  const [sortDirection, setSortDirection] = useState('desc')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -63,6 +65,43 @@ export default function AdminFinance() {
     }
 
     setFilteredTransactions(filtered)
+  }
+
+  const handleSort = (field) => {
+    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc'
+    setSortField(field)
+    setSortDirection(newDirection)
+    
+    const sorted = [...filteredTransactions].sort((a, b) => {
+      let aVal, bVal
+      
+      if (field === 'member_name') {
+        const aMember = members[a.member_id]
+        const bMember = members[b.member_id]
+        aVal = (aMember ? (aMember.full_name || aMember.username) : '').toLowerCase()
+        bVal = (bMember ? (bMember.full_name || bMember.username) : '').toLowerCase()
+      } else if (field === 'amount') {
+        aVal = parseFloat(a.amount || 0)
+        bVal = parseFloat(b.amount || 0)
+      } else if (field === 'due_date') {
+        aVal = a.due_date ? new Date(a.due_date).getTime() : 0
+        bVal = b.due_date ? new Date(b.due_date).getTime() : 0
+      }
+      
+      if (aVal < bVal) return newDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return newDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    
+    setFilteredTransactions(sorted)
+  }
+
+  const isNewMember = (memberId) => {
+    const member = members[memberId]
+    if (!member || !member.admission_date) return false
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    return new Date(member.admission_date) > oneMonthAgo
   }
 
   const handleSearch = () => {
@@ -574,9 +613,39 @@ export default function AdminFinance() {
               <thead>
                 <tr className="bg-fitnix-black border-b-2 border-fitnix-lime/30">
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/6">Month</th>
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/4">Member</th>
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/6">Total Amount</th>
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/4">Due Date</th>
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/4">
+                    <button 
+                      onClick={() => handleSort('member_name')}
+                      className="flex items-center gap-2 hover:text-fitnix-dark-lime transition-colors"
+                    >
+                      Member
+                      {sortField === 'member_name' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/6">
+                    <button 
+                      onClick={() => handleSort('amount')}
+                      className="flex items-center gap-2 hover:text-fitnix-dark-lime transition-colors"
+                    >
+                      Total Amount
+                      {sortField === 'amount' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/4">
+                    <button 
+                      onClick={() => handleSort('due_date')}
+                      className="flex items-center gap-2 hover:text-fitnix-dark-lime transition-colors"
+                    >
+                      Due Date
+                      {sortField === 'due_date' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
                   <th className="px-6 py-5 text-center text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/12">Status</th>
                   <th className="px-6 py-5 text-center text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/12">Actions</th>
                 </tr>
@@ -604,7 +673,14 @@ export default function AdminFinance() {
                           {transaction.due_date ? new Date(transaction.due_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
                         </td>
                         <td className="px-6 py-6 text-base text-fitnix-off-white font-semibold whitespace-nowrap overflow-hidden text-ellipsis" title={memberName}>
-                          {memberName}
+                          <div className="flex items-center gap-2">
+                            <span>{memberName}</span>
+                            {isNewMember(transaction.member_id) && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-fitnix-lime/20 text-fitnix-lime border border-fitnix-lime/50">
+                                New Member
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-6 text-base text-fitnix-lime font-bold whitespace-nowrap">
                           Rs. {parseFloat(transaction.amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

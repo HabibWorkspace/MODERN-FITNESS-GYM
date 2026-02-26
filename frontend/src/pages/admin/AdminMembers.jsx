@@ -9,6 +9,8 @@ export default function AdminMembers() {
   const [members, setMembers] = useState([])
   const [filteredMembers, setFilteredMembers] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortField, setSortField] = useState('member_number')
+  const [sortDirection, setSortDirection] = useState('asc')
   const [packages, setPackages] = useState([])
   const [trainers, setTrainers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -455,6 +457,37 @@ export default function AdminMembers() {
       return false
     })
     setFilteredMembers(filtered)
+  }
+
+  const handleSort = (field) => {
+    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc'
+    setSortField(field)
+    setSortDirection(newDirection)
+    
+    const sorted = [...filteredMembers].sort((a, b) => {
+      let aVal, bVal
+      
+      if (field === 'member_number') {
+        aVal = a.member_number || 0
+        bVal = b.member_number || 0
+      } else if (field === 'full_name') {
+        aVal = (a.full_name || '').toLowerCase()
+        bVal = (b.full_name || '').toLowerCase()
+      }
+      
+      if (aVal < bVal) return newDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return newDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    
+    setFilteredMembers(sorted)
+  }
+
+  const isNewMember = (admissionDate) => {
+    if (!admissionDate) return false
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    return new Date(admissionDate) > oneMonthAgo
   }
 
   const handleClearSearch = () => {
@@ -1378,9 +1411,29 @@ export default function AdminMembers() {
             <table className="w-full table-auto">
               <thead>
                 <tr className="bg-fitnix-black border-b-2 border-fitnix-lime/30">
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">ID</th>
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">
+                    <button 
+                      onClick={() => handleSort('member_number')}
+                      className="flex items-center gap-2 hover:text-fitnix-dark-lime transition-colors"
+                    >
+                      ID
+                      {sortField === 'member_number' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Photo</th>
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Full Name</th>
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">
+                    <button 
+                      onClick={() => handleSort('full_name')}
+                      className="flex items-center gap-2 hover:text-fitnix-dark-lime transition-colors"
+                    >
+                      Full Name
+                      {sortField === 'full_name' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Phone</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Gender</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">DOB</th>
@@ -1426,7 +1479,16 @@ export default function AdminMembers() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">{member.full_name || 'N/A'}</td>
+                        <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span>{member.full_name || 'N/A'}</span>
+                            {isNewMember(member.admission_date) && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-fitnix-lime/20 text-fitnix-lime border border-fitnix-lime/50">
+                                New Member
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">{member.phone}</td>
                         <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">{member.gender || 'N/A'}</td>
                         <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">
