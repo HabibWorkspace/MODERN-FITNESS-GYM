@@ -1,5 +1,5 @@
 """Complete admin routes for member and trainer management."""
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required
 from models.user import User, UserRole
 from models.member_profile import MemberProfile
@@ -12,6 +12,9 @@ from database import db
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import uuid
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from io import BytesIO
 
 admin_complete_bp = Blueprint('admin_complete', __name__)
 
@@ -54,6 +57,115 @@ def list_members():
         'page': page,
         'per_page': per_page
     }), 200
+
+
+@admin_complete_bp.route('/members/export', methods=['GET'])
+@require_admin
+def export_members_excel():
+    """Export all members to Excel file."""
+    try:
+        # Get all members
+        all_members = MemberProfile.query.all()
+        
+        # Create workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Members"
+        
+        # Define headers
+        headers = [
+            'ID', 'Member Number', 'Full Name', 'Username', 'Phone', 'CNIC', 'Email',
+            'Gender', 'Date of Birth', 'Admission Date', 'Admission Fee Paid',
+            'Current Package', 'Trainer', 'Package Start Date', 'Package Expiry Date',
+            'Is Frozen', 'Created At', 'Updated At'
+        ]
+        
+        # Style headers
+        header_fill = PatternFill(start_color='B6FF00', end_color='B6FF00', fill_type='solid')
+        header_font = Font(bold=True, size=12)
+        
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Add data rows
+        for row_num, member in enumerate(all_members, 2):
+            # Get related data
+            user = User.query.get(member.user_id)
+            username = user.username if user else 'N/A'
+            
+            package = Package.query.get(member.current_package_id) if member.current_package_id else None
+            package_name = package.name if package else 'Not Assigned'
+            
+            trainer = TrainerProfile.query.get(member.trainer_id) if member.trainer_id else None
+            trainer_name = trainer.full_name if trainer else 'Not Assigned'
+            
+            # Format dates
+            dob = member.date_of_birth.strftime('%Y-%m-%d') if member.date_of_birth else 'N/A'
+            admission = member.admission_date.strftime('%Y-%m-%d') if member.admission_date else 'N/A'
+            pkg_start = member.package_start_date.strftime('%Y-%m-%d %H:%M:%S') if member.package_start_date else 'N/A'
+            pkg_expiry = member.package_expiry_date.strftime('%Y-%m-%d %H:%M:%S') if member.package_expiry_date else 'N/A'
+            created = member.created_at.strftime('%Y-%m-%d %H:%M:%S') if member.created_at else 'N/A'
+            updated = member.updated_at.strftime('%Y-%m-%d %H:%M:%S') if member.updated_at else 'N/A'
+            
+            # Write row data
+            row_data = [
+                member.id,
+                member.member_number or 'N/A',
+                member.full_name or 'N/A',
+                username,
+                member.phone or 'N/A',
+                member.cnic or 'N/A',
+                member.email or 'N/A',
+                member.gender or 'N/A',
+                dob,
+                admission,
+                'Yes' if member.admission_fee_paid else 'No',
+                package_name,
+                trainer_name,
+                pkg_start,
+                pkg_expiry,
+                'Yes' if member.is_frozen else 'No',
+                created,
+                updated
+            ]
+            
+            for col_num, value in enumerate(row_data, 1):
+                cell = ws.cell(row=row_num, column=col_num, value=value)
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # Save to BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # Generate filename with timestamp
+        filename = f"members_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_complete_bp.route('/members/<member_id>', methods=['GET'])
@@ -311,6 +423,14 @@ def update_member(member_id):
             try:
                 from datetime import datetime as dt
                 member.date_of_birth = dt.strptime(data['date_of_birth'], '%Y-%m-%d').date() if data['date_of_birth'] else None
+            except:
+                pass
+        
+        # Handle admission_date
+        if 'admission_date' in data:
+            try:
+                from datetime import datetime as dt
+                member.admission_date = dt.strptime(data['admission_date'], '%Y-%m-%d').date() if data['admission_date'] else None
             except:
                 pass
         

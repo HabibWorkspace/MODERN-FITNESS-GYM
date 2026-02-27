@@ -823,6 +823,29 @@ export default function AdminMembers() {
     }
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await apiClient.get('/admin/members/export', {
+        responseType: 'blob'
+      })
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `members_export_${new Date().toISOString().split('T')[0]}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      
+      setSuccess('Members exported successfully!')
+    } catch (err) {
+      setError('Failed to export members')
+      console.error('Export error:', err)
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -870,22 +893,32 @@ export default function AdminMembers() {
               Manage gym members, profiles, and access
             </p>
           </div>
-          <button
-            onClick={() => {
-              if (showForm && !editingMember) {
-                setShowForm(false)
-                resetForm()
-              } else if (editingMember) {
-                handleCancelEdit()
-              } else {
-                // Refresh settings before opening form for new member
-                fetchSettings().then(() => {
-                  setShowForm(true)
-                })
-              }
-            }}
-            className="fitnix-button-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
-          >
+          <div className="flex gap-3">
+            <button
+              onClick={handleExportExcel}
+              className="fitnix-button-secondary flex items-center justify-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Export Excel</span>
+            </button>
+            <button
+              onClick={() => {
+                if (showForm && !editingMember) {
+                  setShowForm(false)
+                  resetForm()
+                } else if (editingMember) {
+                  handleCancelEdit()
+                } else {
+                  // Refresh settings before opening form for new member
+                  fetchSettings().then(() => {
+                    setShowForm(true)
+                  })
+                }
+              }}
+              className="fitnix-button-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
+            >
             {showForm ? (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -902,6 +935,7 @@ export default function AdminMembers() {
               </>
             )}
           </button>
+          </div>
         </div>
 
         {error && (
