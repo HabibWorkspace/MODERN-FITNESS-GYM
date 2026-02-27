@@ -344,7 +344,7 @@ Modern Fitness Gym`,ce=`https://wa.me/${A}?text=${encodeURIComponent(ne)}`;windo
         </div>
 
         <div class="header">
-          <img src="/modern-fitness-logo.png" alt="Modern Fitness Gym Logo" class="logo" />
+          <img src="https://raw.githubusercontent.com/HabibWorkspace/MODERN-FITNESS-GYM/main/frontend/public/modern-fitness-logo.png" alt="Modern Fitness Gym Logo" class="logo" />
         </div>
 
         <div class="section">
