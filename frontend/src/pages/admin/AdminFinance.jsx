@@ -666,6 +666,7 @@ export default function AdminFinance() {
                       )}
                     </button>
                   </th>
+                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/12">Admission</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap w-1/6">
                     <button 
                       onClick={() => handleSort('amount')}
@@ -695,7 +696,7 @@ export default function AdminFinance() {
               <tbody className="bg-fitnix-charcoal/30">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center">
+                    <td colSpan="7" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <svg className="w-16 h-16 text-fitnix-off-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -724,6 +725,9 @@ export default function AdminFinance() {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="px-6 py-6 text-sm text-fitnix-off-white/80 whitespace-nowrap">
+                          {member && member.admission_date ? formatAdmissionDate(member.admission_date) : 'N/A'}
                         </td>
                         <td className="px-6 py-6 text-base text-fitnix-lime font-bold whitespace-nowrap">
                           Rs. {parseFloat(transaction.amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
