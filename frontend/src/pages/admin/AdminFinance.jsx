@@ -39,10 +39,25 @@ export default function AdminFinance() {
   // Apply filters whenever transactions, search query, or status filter changes
   useEffect(() => {
     applyFilters()
-  }, [transactions, searchQuery, statusFilter])
+  }, [transactions, allTransactions, searchQuery, statusFilter, members])
+
+  const filterLast3Months = (transactionsList) => {
+    const threeMonthsAgo = new Date()
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+    threeMonthsAgo.setHours(0, 0, 0, 0)
+    
+    return transactionsList.filter(t => {
+      if (!t.due_date) return true
+      const dueDate = new Date(t.due_date)
+      dueDate.setHours(0, 0, 0, 0)
+      // Show transactions from last 3 months (due date is AFTER 3 months ago)
+      return dueDate >= threeMonthsAgo
+    })
+  }
 
   const applyFilters = () => {
-    let filtered = [...transactions]
+    // When searching, use ALL transactions (not just last 3 months)
+    let filtered = searchQuery.trim() ? [...allTransactions] : [...transactions]
 
     // Filter by status
     if (statusFilter !== 'all') {
@@ -92,17 +107,6 @@ export default function AdminFinance() {
     }
 
     setFilteredTransactions(filtered)
-  }
-
-  const filterLast3Months = (transactionsList) => {
-    const threeMonthsAgo = new Date()
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-    
-    return transactionsList.filter(t => {
-      if (!t.due_date) return true
-      const dueDate = new Date(t.due_date)
-      return dueDate >= threeMonthsAgo
-    })
   }
 
   const handleSort = (field) => {
@@ -622,20 +626,16 @@ export default function AdminFinance() {
         return
       }
       
-      // Create export data
+      // Create export data - removed phone, status, type
       const exportData = transactionsToExport.map(t => {
         const member = members[t.member_id]
-        const status = getOverdueStatus(t)
         
         return {
           member_id: member ? member.member_number : 'N/A',
           member_name: t.full_name || 'N/A',
-          phone: member ? member.phone : 'N/A',
           amount: t.amount,
           due_date: t.due_date,
-          paid_date: t.paid_date,
-          status: status,
-          transaction_type: t.transaction_type
+          paid_date: t.paid_date
         }
       })
       
@@ -1114,14 +1114,27 @@ export default function AdminFinance() {
                 <label className="block text-sm font-semibold text-fitnix-off-white mb-2">
                   Select Month (Optional)
                 </label>
-                <input
-                  type="month"
+                <select
                   value={exportMonth}
                   onChange={(e) => setExportMonth(e.target.value)}
                   className="w-full px-4 py-3 bg-fitnix-black border border-fitnix-off-white/20 rounded-lg text-fitnix-off-white focus:outline-none focus:border-fitnix-lime focus:ring-1 focus:ring-fitnix-lime transition-colors"
-                />
+                >
+                  <option value="">All Transactions</option>
+                  {(() => {
+                    const months = []
+                    const today = new Date()
+                    // Generate last 12 months
+                    for (let i = 0; i < 12; i++) {
+                      const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
+                      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                      const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                      months.push(<option key={value} value={value}>{label}</option>)
+                    }
+                    return months
+                  })()}
+                </select>
                 <p className="text-xs text-fitnix-off-white/40 mt-2">
-                  Leave blank to export all transactions
+                  Select a specific month or leave as "All Transactions"
                 </p>
               </div>
               
