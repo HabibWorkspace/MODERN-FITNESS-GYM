@@ -686,12 +686,22 @@ def get_dashboard_metrics():
         total_members = MemberProfile.query.filter_by(is_frozen=False).count()
         
         # Overdue payments - count PENDING transactions where due_date < now
+        # EXCLUDE transactions for frozen members
         from datetime import datetime
         now = datetime.utcnow()
-        overdue_payments_count = Transaction.query.filter(
+        
+        # Get all overdue transactions
+        overdue_transactions = Transaction.query.filter(
             Transaction.status == TransactionStatus.PENDING,
             Transaction.due_date < now
-        ).count()
+        ).all()
+        
+        # Filter out transactions for frozen members
+        overdue_payments_count = 0
+        for transaction in overdue_transactions:
+            member = MemberProfile.query.get(transaction.member_id)
+            if member and not member.is_frozen:
+                overdue_payments_count += 1
         
         # Since attendance was removed, set these to 0
         daily_attendance_count = 0

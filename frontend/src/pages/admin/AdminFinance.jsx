@@ -900,12 +900,18 @@ export default function AdminFinance() {
                         <td className="px-6 py-6">
                           <div className="flex flex-col gap-1.5 items-center">
                             {transaction.status !== 'COMPLETED' ? (
-                              <button
-                                onClick={() => handleMarkPaid(transaction.id)}
-                                className="w-20 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black px-2 py-1 rounded-md transition-all font-semibold text-xs shadow-md hover:scale-105 whitespace-nowrap"
-                              >
-                                Mark Paid
-                              </button>
+                              member && member.is_frozen ? (
+                                <span className="text-xs text-blue-400 font-semibold px-2 py-1 bg-blue-900/20 rounded-md border border-blue-500/30">
+                                  Frozen
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleMarkPaid(transaction.id)}
+                                  className="w-20 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black px-2 py-1 rounded-md transition-all font-semibold text-xs shadow-md hover:scale-105 whitespace-nowrap"
+                                >
+                                  Mark Paid
+                                </button>
+                              )
                             ) : (
                               <button
                                 onClick={() => handlePrintReceipt(transaction)}
