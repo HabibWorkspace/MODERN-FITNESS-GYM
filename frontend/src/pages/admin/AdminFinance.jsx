@@ -522,14 +522,6 @@ Modern Fitness Gym`
             <span class="label">Phone:</span>
             <span class="value">${member.phone || 'N/A'}</span>
           </div>
-          <div class="row">
-            <span class="label">CNIC:</span>
-            <span class="value">${member.cnic || 'N/A'}</span>
-          </div>
-          <div class="row">
-            <span class="label">Email:</span>
-            <span class="value">${member.email || 'N/A'}</span>
-          </div>
           ${member.trainer_name ? `
           <div class="row">
             <span class="label">Assigned Trainer:</span>

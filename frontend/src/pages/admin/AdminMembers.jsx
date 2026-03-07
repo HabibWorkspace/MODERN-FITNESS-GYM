@@ -753,14 +753,6 @@ export default function AdminMembers() {
               <span class="info-label">Phone:</span>
               <span class="info-value">${member.phone || 'N/A'}</span>
             </div>
-            <div class="info-row">
-              <span class="info-label">CNIC:</span>
-              <span class="info-value">${member.cnic || 'N/A'}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Email:</span>
-              <span class="info-value">${member.email || 'N/A'}</span>
-            </div>
           </div>
 
           <div class="info-section">
@@ -1497,8 +1489,6 @@ export default function AdminMembers() {
                     </button>
                   </th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Phone</th>
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Gender</th>
-                  <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">DOB</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Admission</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Package</th>
                   <th className="px-6 py-5 text-left text-sm font-bold text-fitnix-lime uppercase tracking-wider whitespace-nowrap">Trainer</th>
@@ -1509,7 +1499,7 @@ export default function AdminMembers() {
               <tbody className="bg-fitnix-charcoal/30">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-12 text-center">
+                    <td colSpan="9" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <svg className="w-16 h-16 text-fitnix-off-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1541,11 +1531,11 @@ export default function AdminMembers() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">
-                          <div className="flex items-center gap-2">
+                        <td className="px-6 py-6 text-base text-fitnix-off-white">
+                          <div className="flex flex-col gap-1">
                             <span>{member.full_name || 'N/A'}</span>
                             {isNewMember(member.admission_date) && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-fitnix-lime/20 text-fitnix-lime border border-fitnix-lime/50 animate-pulse">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-fitnix-lime/20 text-fitnix-lime border border-fitnix-lime/50 animate-pulse w-fit">
                                 <span className="w-2 h-2 bg-fitnix-lime rounded-full animate-ping"></span>
                                 New Member
                               </span>
@@ -1553,10 +1543,6 @@ export default function AdminMembers() {
                           </div>
                         </td>
                         <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">{member.phone}</td>
-                        <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">{member.gender || 'N/A'}</td>
-                        <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">
-                          {member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
-                        </td>
                         <td className="px-6 py-6 text-base text-fitnix-off-white whitespace-nowrap">
                           {member.admission_date ? new Date(member.admission_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
                         </td>
