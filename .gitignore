@@ -18,7 +18,6 @@ backend/backups/
 
 # Frontend
 frontend/node_modules/
-frontend/dist/
 frontend/.env
 frontend/.env.production
 frontend/.vite/
@@ -44,9 +43,11 @@ backend/logs/
 
 # Build artifacts
 build/
-dist/
 docs/
 *.egg
+
+# Frontend dist folder should be included for deployment
+# dist/ is commented out to allow frontend/dist to be committed
 
 # Production files (keep templates only)
 !backend/.env.example

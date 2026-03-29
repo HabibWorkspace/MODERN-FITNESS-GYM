@@ -24,16 +24,6 @@ from config import get_config
 jwt = JWTManager()
 socketio = SocketIO()
 
-# Rate limiting storage (in-memory for development, use Redis for production)
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
-)
-
 
 def create_app(config=None):
     """Create and configure Flask application."""
@@ -69,7 +59,6 @@ def create_app(config=None):
     # Initialize extensions
     db.init_app(app)
     jwt.init_app(app)
-    limiter.init_app(app)
     
     # Initialize Flask-SocketIO with CORS support
     socketio.init_app(app, 

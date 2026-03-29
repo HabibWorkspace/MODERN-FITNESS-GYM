@@ -31,14 +31,14 @@ class AttendanceLog:
 class BiometricDeviceClient:
     """Client for communicating with ZKTeco iFace900 biometric device."""
     
-    def __init__(self, ip: str, port: int, timeout: int = 10):
+    def __init__(self, ip: str, port: int, timeout: int = 5):
         """
         Initialize device client with connection parameters.
         
         Args:
             ip: IP address of the biometric device
             port: Port number for device communication
-            timeout: Connection timeout in seconds (default: 10)
+            timeout: Connection timeout in seconds (default: 5)
         """
         self.ip = ip
         self.port = port
@@ -46,9 +46,10 @@ class BiometricDeviceClient:
         self.zk = ZK(ip, port=port, timeout=timeout)
         self.conn = None
         self._is_connected = False
+        self._last_successful_connection = None
         
-        # Retry configuration with exponential backoff
-        self.retry_intervals = [60, 120, 240, 300]  # seconds: 60s, 120s, 240s, max 300s
+        # Retry configuration - more aggressive for better reliability
+        self.retry_intervals = [10, 20, 30, 60]  # seconds: 10s, 20s, 30s, max 60s
         self.current_retry_index = 0
         self.last_connection_attempt = None
         
@@ -74,6 +75,7 @@ class BiometricDeviceClient:
             
             self.conn = self.zk.connect()
             self._is_connected = True
+            self._last_successful_connection = datetime.now(timezone.utc)
             
             # Reset retry index on successful connection
             self.current_retry_index = 0

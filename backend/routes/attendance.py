@@ -107,10 +107,69 @@ def get_currently_inside():
                 'time_spent_formatted': format_stay_duration(time_spent)
             }
             (members if r.person_type == 'member' else trainers).append(data)
-        return jsonify({'success': True, 'members': members, 'trainers': trainers, 'total_inside': len(members) + len(trainers)}), 200
+        
+        # Get recent events (last 20 check-ins/check-outs from today)
+        # We need to create a list of events with their actual timestamps
+        today = datetime.utcnow().date()
+        all_records = AttendanceRecord.query.filter(
+            func.date(AttendanceRecord.check_in_time) == today
+        ).all()
+        
+        # Create events list with actual event timestamps
+        events_list = []
+        for r in all_records:
+            # Get person name
+            person_name = r.person_name
+            if not person_name:
+                if r.person_type == 'member':
+                    person = MemberProfile.query.get(r.person_id)
+                    person_name = person.full_name if person and person.full_name else f"Member {r.person_id[:8]}"
+                elif r.person_type == 'trainer':
+                    person = TrainerProfile.query.get(r.person_id)
+                    person_name = person.full_name if person and person.full_name else f"Trainer {r.person_id[:8]}"
+                else:
+                    person_name = f"{r.person_type.capitalize()} {r.person_id[:8]}"
+            
+            # Add check-in event
+            events_list.append({
+                'id': f"{r.id}-in",
+                'person_id': r.person_id,
+                'person_name': person_name,
+                'person_type': r.person_type,
+                'status': 'Check-In',
+                'timestamp': r.check_in_time.isoformat(),
+                'sort_time': r.check_in_time
+            })
+            
+            # Add check-out event if exists
+            if r.check_out_time:
+                events_list.append({
+                    'id': f"{r.id}-out",
+                    'person_id': r.person_id,
+                    'person_name': person_name,
+                    'person_type': r.person_type,
+                    'status': 'Check-Out',
+                    'timestamp': r.check_out_time.isoformat(),
+                    'sort_time': r.check_out_time
+                })
+        
+        # Sort by timestamp descending and take last 20
+        events_list.sort(key=lambda x: x['sort_time'], reverse=True)
+        recent_events = [
+            {k: v for k, v in event.items() if k != 'sort_time'}
+            for event in events_list[:20]
+        ]
+        
+        return jsonify({
+            'success': True, 
+            'members': members, 
+            'trainers': trainers, 
+            'total_inside': len(members) + len(trainers),
+            'recent_events': recent_events
+        }), 200
     except Exception as e:
         current_app.logger.error(f"Error in get_currently_inside: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e), 'members': [], 'trainers': [], 'total_inside': 0}), 200
+        return jsonify({'success': False, 'error': str(e), 'members': [], 'trainers': [], 'total_inside': 0, 'recent_events': []}), 200
 
 @attendance_bp.route('/dashboard/summary', methods=['GET'])
 @jwt_required()
@@ -212,6 +271,103 @@ def get_average_stay():
         return jsonify({'success': True, 'period': period, 'average_minutes': average, 'average_formatted': format_stay_duration(average)}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@attendance_bp.route('/analytics/monthly-records', methods=['GET'])
+@jwt_required()
+def get_monthly_attendance_records():
+    """Get monthly attendance records for all members/trainers with aggregated stats."""
+    try:
+        # Get month parameter (default to current month)
+        month_offset = request.args.get('month_offset', 0, type=int)
+        search_query = request.args.get('search', '').strip().lower()
+        
+        today = datetime.utcnow().date()
+        # Calculate month start
+        month_start = today.replace(day=1)
+        for _ in range(month_offset):
+            month_start = (month_start - timedelta(days=1)).replace(day=1)
+        
+        # Calculate month end
+        if month_start.month == 12:
+            month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+        
+        # Get all attendance records for the month
+        records = db.session.query(AttendanceRecord).filter(
+            and_(
+                func.date(AttendanceRecord.check_in_time) >= month_start,
+                func.date(AttendanceRecord.check_in_time) <= month_end
+            )
+        ).all()
+        
+        # Aggregate by person
+        person_stats = {}
+        for r in records:
+            key = (r.person_id, r.person_type)
+            if key not in person_stats:
+                # Get person name
+                person_name = r.person_name
+                if not person_name:
+                    if r.person_type == 'member':
+                        person = MemberProfile.query.get(r.person_id)
+                        person_name = person.full_name if person and person.full_name else f"Member {r.person_id[:8]}"
+                    elif r.person_type == 'trainer':
+                        person = TrainerProfile.query.get(r.person_id)
+                        person_name = person.full_name if person and person.full_name else f"Trainer {r.person_id[:8]}"
+                    else:
+                        person_name = f"{r.person_type.capitalize()} {r.person_id[:8]}"
+                
+                person_stats[key] = {
+                    'person_id': r.person_id,
+                    'person_name': person_name,
+                    'person_type': r.person_type,
+                    'total_visits': 0,
+                    'total_time_minutes': 0,
+                    'days_attended': set()
+                }
+            
+            person_stats[key]['total_visits'] += 1
+            if r.stay_duration:
+                person_stats[key]['total_time_minutes'] += r.stay_duration
+            person_stats[key]['days_attended'].add(r.check_in_time.date())
+        
+        # Convert to list and format
+        result = []
+        for stats in person_stats.values():
+            # Apply search filter
+            if search_query and search_query not in stats['person_name'].lower():
+                continue
+            
+            days_count = len(stats['days_attended'])
+            total_hours = stats['total_time_minutes'] // 60
+            total_mins = stats['total_time_minutes'] % 60
+            
+            result.append({
+                'person_id': stats['person_id'],
+                'person_name': stats['person_name'],
+                'person_type': stats['person_type'],
+                'total_visits': stats['total_visits'],
+                'days_attended': days_count,
+                'total_time_formatted': f"{total_hours}h {total_mins}m",
+                'total_time_minutes': stats['total_time_minutes']
+            })
+        
+        # Sort by total visits descending
+        result.sort(key=lambda x: x['total_visits'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'month': month_start.strftime('%B %Y'),
+            'month_start': month_start.isoformat(),
+            'month_end': month_end.isoformat(),
+            'count': len(result),
+            'records': result
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in get_monthly_attendance_records: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e), 'records': []}), 200
 
 @attendance_bp.route('/mappings', methods=['POST'])
 @jwt_required()
@@ -365,38 +521,3 @@ def get_daily_summary():
     except Exception as e:
         current_app.logger.error(f"Error in get_daily_summary: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e), 'summaries': []}), 200
-
-
-@attendance_bp.route('/device/clear-logs', methods=['POST'])
-@jwt_required()
-def clear_device_logs():
-    """Clear all attendance logs from the biometric device."""
-    try:
-        device_client = current_app.config.get('biometric_device_client')
-        if not device_client:
-            return jsonify({'error': 'Device client not initialized'}), 503
-        
-        # Check if device is connected
-        if not device_client.is_connected():
-            # Try to connect
-            connected = device_client.connect()
-            if not connected:
-                return jsonify({'error': 'Failed to connect to device'}), 503
-        
-        # Clear attendance logs
-        success = device_client.clear_attendance_logs()
-        
-        if success:
-            return jsonify({
-                'success': True, 
-                'message': 'All attendance logs cleared from device'
-            }), 200
-        else:
-            return jsonify({
-                'success': False, 
-                'error': 'Failed to clear attendance logs'
-            }), 500
-            
-    except Exception as e:
-        current_app.logger.error(f"Error clearing device logs: {str(e)}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
