@@ -25,6 +25,69 @@ def manual_sync():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@attendance_bp.route('/sync-log', methods=['POST'])
+@jwt_required()
+def sync_log_from_local():
+    """Receive attendance log from local device sync service."""
+    try:
+        data = request.get_json()
+        device_user_id = data.get('device_user_id')
+        timestamp_str = data.get('timestamp')
+        device_serial = data.get('device_serial')
+        
+        if not all([device_user_id, timestamp_str]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Parse timestamp
+        timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        
+        # Check if mapping exists
+        mapping = DeviceUserMapping.query.filter_by(device_user_id=device_user_id).first()
+        if not mapping:
+            current_app.logger.warning(f"No mapping found for device_user_id: {device_user_id}")
+            return jsonify({'error': 'No mapping found for device user'}), 404
+        
+        # Check if record already exists
+        existing = AttendanceRecord.query.filter_by(
+            person_id=mapping.person_id,
+            person_type=mapping.person_type,
+            check_in_time=timestamp
+        ).first()
+        
+        if existing:
+            return jsonify({'message': 'Record already exists', 'id': existing.id}), 200
+        
+        # Get person name
+        person_name = None
+        if mapping.person_type == 'member':
+            person = MemberProfile.query.get(mapping.person_id)
+            person_name = person.full_name if person and person.full_name else None
+        elif mapping.person_type == 'trainer':
+            person = TrainerProfile.query.get(mapping.person_id)
+            person_name = person.full_name if person and person.full_name else None
+        
+        # Create new attendance record
+        record = AttendanceRecord(
+            person_id=mapping.person_id,
+            person_type=mapping.person_type,
+            person_name=person_name,
+            check_in_time=timestamp,
+            device_user_id=device_user_id
+        )
+        
+        db.session.add(record)
+        db.session.commit()
+        
+        current_app.logger.info(f"Synced attendance log: {person_name} at {timestamp}")
+        
+        return jsonify({'success': True, 'id': record.id}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error syncing log: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
 @attendance_bp.route('/today', methods=['GET'])
 @jwt_required()
 def get_today_attendance():

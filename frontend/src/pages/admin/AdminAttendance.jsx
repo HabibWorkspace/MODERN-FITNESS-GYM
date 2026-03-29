@@ -159,10 +159,6 @@ const AdminAttendance = () => {
               <Activity className="w-12 h-12 text-fitnix-lime" strokeWidth={3} />
               Attendance <span className="text-fitnix-lime">Dashboard</span>
             </h1>
-            <p className="text-fitnix-gray mt-2 flex items-center gap-2 ml-16">
-              <span className="inline-block w-2 h-2 bg-fitnix-lime rounded-full animate-pulse"></span>
-              Real-time tracking • Auto-refreshes every 3s
-            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <div className={`px-5 py-3 rounded-xl border-2 transition-all duration-300 ${
