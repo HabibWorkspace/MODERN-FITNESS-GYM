@@ -10,6 +10,8 @@ import AdminFinance from './pages/admin/AdminFinance'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminAnalytics from './pages/admin/AdminAnalytics'
 import AdminPackages from './pages/admin/AdminPackages'
+import AdminAttendance from './pages/admin/AdminAttendance'
+import AdminDeviceMappings from './pages/admin/AdminDeviceMappings'
 import OfflineIndicator from './components/OfflineIndicator'
 
 function App() {
@@ -43,6 +45,8 @@ function App() {
         <Route path="/admin/finance" element={<ProtectedRoute requiredRole="admin"><AdminFinance /></ProtectedRoute>} />
         <Route path="/admin/analytics" element={<ProtectedRoute requiredRole="admin"><AdminAnalytics /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
+        <Route path="/admin/attendance" element={<ProtectedRoute requiredRole="admin"><AdminAttendance /></ProtectedRoute>} />
+        <Route path="/admin/device-mappings" element={<ProtectedRoute requiredRole="admin"><AdminDeviceMappings /></ProtectedRoute>} />
         
         {/* Default redirect - Only admin login available */}
         <Route path="/" element={<Navigate to="/login" replace />} />

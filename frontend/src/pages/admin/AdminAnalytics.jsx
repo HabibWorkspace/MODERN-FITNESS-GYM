@@ -234,12 +234,21 @@ export default function AdminAnalytics() {
 
     // Count members by package
     const packageCounts = {}
+    let noPackageCount = 0
+    
     members.forEach(member => {
       if (member.current_package_id && packageMap[member.current_package_id]) {
         const packageName = packageMap[member.current_package_id]
         packageCounts[packageName] = (packageCounts[packageName] || 0) + 1
+      } else {
+        noPackageCount++
       }
     })
+
+    // Add "No Package" if there are members without packages
+    if (noPackageCount > 0) {
+      packageCounts['No Package'] = noPackageCount
+    }
 
     // If no members have packages assigned, show empty state
     const labels = Object.keys(packageCounts)
@@ -257,25 +266,44 @@ export default function AdminAnalytics() {
 
     const data = Object.values(packageCounts)
 
-    // Generate up to 50 distinct colors dynamically
+    // Enhanced color palette with more vibrant and distinct colors
     const generateColors = (count) => {
+      // Predefined vibrant color palette
+      const vibrantColors = [
+        '#EF4444', // Red
+        '#10B981', // Green
+        '#3B82F6', // Blue
+        '#F59E0B', // Amber
+        '#8B5CF6', // Purple
+        '#EC4899', // Pink
+        '#14B8A6', // Teal
+        '#F97316', // Orange
+        '#6366F1', // Indigo
+        '#84CC16', // Lime
+        '#06B6D4', // Cyan
+        '#F43F5E', // Rose
+        '#8B5CF6', // Violet
+        '#22C55E', // Emerald
+        '#EAB308', // Yellow
+        '#A855F7', // Fuchsia
+        '#0EA5E9', // Sky
+        '#FB923C', // Orange-400
+        '#C026D3', // Magenta
+        '#16A34A', // Green-600
+      ]
+      
       const colors = []
       
-      // Use multiple saturation and lightness levels for more variety
-      const saturations = [60, 70, 80, 90]
-      const lightnesses = [45, 55, 65]
-      
-      let colorIndex = 0
-      
       for (let i = 0; i < count; i++) {
-        // Calculate hue with golden ratio for better distribution
-        const hue = (i * 137.508) % 360 // Golden angle for better color distribution
-        
-        // Cycle through different saturation and lightness values
-        const saturation = saturations[Math.floor(i / 12) % saturations.length]
-        const lightness = lightnesses[Math.floor(i / 4) % lightnesses.length]
-        
-        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`)
+        if (i < vibrantColors.length) {
+          colors.push(vibrantColors[i])
+        } else {
+          // Generate additional colors using HSL for more packages
+          const hue = (i * 137.508) % 360
+          const saturation = 70 + (i % 3) * 10
+          const lightness = 50 + (i % 2) * 10
+          colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`)
+        }
       }
       
       return colors
