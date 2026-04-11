@@ -53,3 +53,10 @@ docs/
 !backend/.env.example
 !backend/.env.production.example
 !frontend/.env.example
+
+# Local sync scripts and utilities (not needed on server)
+backend/local_device_sync.py
+backend/local_device_proxy.py
+backend/fix_duplicate_checkins.py
+backend/reset_attendance_data.py
+LOCAL_DEVICE_SYNC_SETUP.md
