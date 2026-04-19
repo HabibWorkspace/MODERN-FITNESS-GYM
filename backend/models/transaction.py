@@ -36,6 +36,11 @@ class Transaction(db.Model):
     discount_type = db.Column(db.String(20), default='fixed')  # 'fixed' or 'percentage'
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
+    # Reverse payment tracking
+    is_reversed = db.Column(db.Boolean, default=False, nullable=False)
+    reversed_at = db.Column(db.DateTime)
+    reversed_by = db.Column(db.String(36))
+    
     def __repr__(self):
         return f'<Transaction {self.transaction_type} {self.amount}>'
     
@@ -54,4 +59,16 @@ class Transaction(db.Model):
             'discount_amount': float(self.discount_amount) if self.discount_amount else 0,
             'discount_type': self.discount_type or 'fixed',
             'created_at': self.created_at.isoformat() + 'Z',
+            'is_reversed': self.is_reversed,
+            'reversed_at': self.reversed_at.isoformat() + 'Z' if self.reversed_at else None,
+            'reversed_by': self.reversed_by,
         }
+    
+    def can_reverse(self):
+        """Check if transaction can be reversed (within 24 hours of payment)."""
+        if not self.paid_date or self.is_reversed or self.status != TransactionStatus.COMPLETED:
+            return False
+        
+        # Check if within 24 hours
+        time_since_payment = datetime.utcnow() - self.paid_date
+        return time_since_payment.total_seconds() < (24 * 60 * 60)  # 24 hours in seconds

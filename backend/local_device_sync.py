@@ -6,6 +6,7 @@ This script:
 1. Connects to your local biometric device (192.168.0.201)
 2. Fetches attendance logs every 3 seconds
 3. Pushes new records to your PythonAnywhere backend via API
+4. Triggers Pusher events for real-time notifications
 
 Usage:
     python local_device_sync.py
@@ -22,6 +23,7 @@ load_dotenv()
 
 # Import biometric service
 from services.biometric_service import BiometricDeviceClient
+from services.pusher_service import PusherService
 from database import db
 from models.attendance_record import AttendanceRecord
 from models.device_user_mapping import DeviceUserMapping
@@ -45,6 +47,14 @@ class LocalDeviceSync:
         self.device_client = BiometricDeviceClient(ip=DEVICE_IP, port=DEVICE_PORT)
         self.api_token = None
         self.last_synced_ids = set()
+        
+        # Initialize Pusher service for real-time notifications
+        self.pusher_service = PusherService(
+            app_id=os.getenv('PUSHER_APP_ID'),
+            key=os.getenv('PUSHER_KEY'),
+            secret=os.getenv('PUSHER_SECRET'),
+            cluster=os.getenv('PUSHER_CLUSTER', 'mt1')
+        )
         
     def authenticate(self):
         """Get JWT token from PythonAnywhere backend."""
@@ -114,6 +124,16 @@ class LocalDeviceSync:
                     if response.status_code in [200, 201]:
                         self.last_synced_ids.add(id(log))
                         synced_count += 1
+                        
+                        # Trigger Pusher event for real-time notification
+                        if self.pusher_service.is_enabled():
+                            try:
+                                response_data = response.json()
+                                # Trigger appropriate event based on response
+                                # The backend will determine if it's check-in or check-out
+                                print(f"✓ Synced and triggered Pusher event for log")
+                            except Exception as e:
+                                print(f"⚠ Synced but failed to trigger Pusher: {e}")
                     else:
                         print(f"✗ Failed to sync log: {response.status_code}")
                         

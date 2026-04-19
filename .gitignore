@@ -22,9 +22,10 @@ frontend/.env
 frontend/.env.production
 frontend/.vite/
 
-# IDE
+# IDE & Development Tools
 .vscode/
 .idea/
+.kiro/
 *.swp
 *.swo
 *~

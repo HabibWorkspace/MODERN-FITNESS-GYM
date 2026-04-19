@@ -77,7 +77,7 @@ def export_members_excel():
         # Define headers (only essential columns)
         headers = [
             'Member ID', 'Full Name', 'Phone', 'Email', 'Gender', 
-            'Date of Birth', 'Admission Date', 'Current Package', 'Trainer'
+            'Date of Birth', 'Admission Date', 'Current Package', 'Trainer', 'Status'
         ]
         
         # Style for headers
@@ -92,7 +92,7 @@ def export_members_excel():
         )
         
         # Add title row
-        ws.merge_cells('A1:I1')
+        ws.merge_cells('A1:J1')
         title_cell = ws['A1']
         title_cell.value = 'MODERN FITNESS GYM - MEMBERS LIST'
         title_cell.font = Font(bold=True, size=16, color='000000')
@@ -123,6 +123,9 @@ def export_members_excel():
             dob = member.date_of_birth.strftime('%d-%b-%Y') if member.date_of_birth else 'N/A'
             admission = member.admission_date.strftime('%d-%b-%Y') if member.admission_date else 'N/A'
             
+            # Determine status
+            status = 'Frozen' if member.is_frozen else 'Active'
+            
             # Write row data
             row_data = [
                 member.member_number or 'N/A',
@@ -133,7 +136,8 @@ def export_members_excel():
                 dob,
                 admission,
                 package_name,
-                trainer_name
+                trainer_name,
+                status
             ]
             
             # Alternate row colors
@@ -156,7 +160,8 @@ def export_members_excel():
             'F': 15,  # DOB
             'G': 15,  # Admission Date
             'H': 20,  # Package
-            'I': 20   # Trainer
+            'I': 20,  # Trainer
+            'J': 12   # Status
         }
         
         for col, width in column_widths.items():
@@ -1074,6 +1079,42 @@ def get_revenue_trend():
         return jsonify({'error': str(e)}), 500
 
 
+@admin_complete_bp.route('/dashboard/daily-revenue', methods=['GET'])
+@require_admin
+def get_daily_revenue():
+    """Get daily revenue data for the last 30 days."""
+    try:
+        from datetime import datetime, timedelta
+        
+        # Get last 30 days of revenue
+        days = []
+        revenue = []
+        
+        for i in range(30):
+            day_date = datetime.now() - timedelta(days=29-i)
+            days.append(day_date.strftime('%d %b'))
+            
+            # Calculate revenue for this day
+            day_start = day_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            
+            day_revenue = db.session.query(func.sum(Transaction.amount)).filter(
+                Transaction.status == TransactionStatus.COMPLETED,
+                Transaction.paid_date >= day_start,
+                Transaction.paid_date < day_end,
+                (Transaction.is_reversed == False) | (Transaction.is_reversed.is_(None))  # Exclude reversed transactions
+            ).scalar() or 0
+            
+            revenue.append(float(day_revenue))
+        
+        return jsonify({
+            'days': days,
+            'revenue': revenue
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_complete_bp.route('/dashboard/member-growth', methods=['GET'])
 @require_admin
 def get_member_growth():
@@ -1218,7 +1259,10 @@ def get_member_payments_fixed():
                     'trainer_fee': trainer_fee,
                     'package_price': package_price,
                     'discount_amount': discount_amount,
-                    'discount_type': transaction.discount_type or 'fixed'
+                    'discount_type': transaction.discount_type or 'fixed',
+                    'is_reversed': getattr(transaction, 'is_reversed', False),
+                    'reversed_at': transaction.reversed_at.isoformat() + 'Z' if hasattr(transaction, 'reversed_at') and transaction.reversed_at else None,
+                    'reversed_by': getattr(transaction, 'reversed_by', None)
                 })
             except Exception as item_error:
                 continue
@@ -1290,6 +1334,75 @@ def mark_transaction_paid(transaction_id):
         
         return jsonify({
             'message': 'Transaction marked as paid and next month transaction created',
+            'transaction': transaction.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_complete_bp.route('/finance/transactions/<transaction_id>/reverse-payment', methods=['POST'])
+@require_admin
+def reverse_transaction_payment(transaction_id):
+    """Reverse a completed payment within 24 hours."""
+    try:
+        from flask import g
+        
+        transaction = Transaction.query.get(transaction_id)
+        if not transaction:
+            return jsonify({'error': 'Transaction not found'}), 404
+        
+        # Check if transaction can be reversed
+        if not transaction.can_reverse():
+            if transaction.is_reversed:
+                return jsonify({'error': 'Transaction has already been reversed'}), 400
+            elif transaction.status != TransactionStatus.COMPLETED:
+                return jsonify({'error': 'Only completed transactions can be reversed'}), 400
+            elif not transaction.paid_date:
+                return jsonify({'error': 'Transaction has no payment date'}), 400
+            else:
+                return jsonify({'error': 'Transaction can only be reversed within 24 hours of payment'}), 400
+        
+        # Get member info
+        member = MemberProfile.query.get(transaction.member_id)
+        if not member:
+            return jsonify({'error': 'Member not found'}), 404
+        
+        # Mark transaction as reversed
+        transaction.status = TransactionStatus.PENDING
+        transaction.is_reversed = True
+        transaction.reversed_at = datetime.utcnow()
+        transaction.reversed_by = g.current_user.id if hasattr(g, 'current_user') else None
+        
+        # Clear paid_date to indicate it's no longer paid
+        original_paid_date = transaction.paid_date
+        transaction.paid_date = None
+        
+        # If this was an admission fee, reverse the admission_fee_paid flag
+        if transaction.transaction_type.value == 'ADMISSION':
+            member.admission_fee_paid = False
+        
+        # Find and delete the next month's transaction that was auto-created
+        # Look for transactions created after this payment with due_date 30 days later
+        if original_paid_date and not member.is_frozen:
+            next_due_date = transaction.due_date + timedelta(days=30) if transaction.due_date else None
+            if next_due_date:
+                # Find auto-created next transaction
+                next_transaction = Transaction.query.filter_by(
+                    member_id=member.id,
+                    status=TransactionStatus.PENDING,
+                    due_date=next_due_date
+                ).filter(
+                    Transaction.created_at > original_paid_date
+                ).first()
+                
+                if next_transaction:
+                    db.session.delete(next_transaction)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Payment reversed successfully. Transaction status reset to PENDING.',
             'transaction': transaction.to_dict()
         }), 200
     except Exception as e:

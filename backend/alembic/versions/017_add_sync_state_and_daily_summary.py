@@ -22,14 +22,14 @@ def upgrade():
         'sync_state',
         sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('device_user_id', sa.String(50), nullable=False),
-        sa.Column('last_processed_timestamp', sa.DateTime(), nullable=False),
         sa.Column('device_serial', sa.String(50), nullable=False),
+        sa.Column('last_processed_timestamp', sa.DateTime(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False)
     )
     op.create_index('ix_sync_state_device_user_id', 'sync_state', ['device_user_id'], unique=True)
     
-    # Create daily_attendance_summary table
+    # Create daily_attendance_summary table with unique constraint in table definition
     op.create_table(
         'daily_attendance_summary',
         sa.Column('id', sa.String(36), primary_key=True),
@@ -43,11 +43,11 @@ def upgrade():
         sa.Column('total_time_minutes', sa.Integer(), nullable=True),
         sa.Column('visit_count', sa.Integer(), default=1),
         sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False)
+        sa.Column('updated_at', sa.DateTime(), nullable=False),
+        sa.UniqueConstraint('date', 'person_id', name='unique_person_date')
     )
     op.create_index('ix_daily_attendance_summary_date', 'daily_attendance_summary', ['date'])
     op.create_index('ix_daily_attendance_summary_person_id', 'daily_attendance_summary', ['person_id'])
-    op.create_unique_constraint('unique_person_date', 'daily_attendance_summary', ['date', 'person_id'])
 
 
 def downgrade():

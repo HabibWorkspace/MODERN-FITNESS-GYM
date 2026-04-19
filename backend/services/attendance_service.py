@@ -56,7 +56,7 @@ class AttendanceService:
     """Service for orchestrating attendance tracking operations."""
     
     def __init__(self, device_client: BiometricDeviceClient, 
-                 db_session: Session, notification_emitter=None, app=None):
+                 db_session: Session, notification_emitter=None, app=None, pusher_service=None):
         """
         Initialize attendance service with dependencies.
         
@@ -65,11 +65,13 @@ class AttendanceService:
             db_session: SQLAlchemy database session
             notification_emitter: Optional notification service for real-time updates
             app: Flask application instance for app context
+            pusher_service: Optional Pusher service for real-time push notifications
         """
         self.device_client = device_client
         self.db_session = db_session
         self.notification_emitter = notification_emitter
         self.app = app
+        self.pusher_service = pusher_service
         self.scheduler = None
         self._is_running = False
         
@@ -459,6 +461,29 @@ class AttendanceService:
                             )
                             # Continue processing (graceful degradation)
                     
+                    # Trigger Pusher event for real-time updates
+                    if self.pusher_service and self.pusher_service.is_enabled():
+                        try:
+                            # Fetch additional member details for richer notifications
+                            member_details = self._get_member_details(person_id, person_type)
+                            
+                            pusher_data = {
+                                'id': record.id,
+                                'person_id': person_id,
+                                'person_name': person_name,
+                                'person_type': person_type,
+                                'check_in_time': timestamp.isoformat(),
+                                'timestamp': timestamp.isoformat()
+                            }
+                            
+                            # Add member-specific details if available
+                            if member_details:
+                                pusher_data.update(member_details)
+                            
+                            self.pusher_service.trigger_check_in(pusher_data)
+                        except Exception as e:
+                            logger.error(f"Failed to trigger Pusher check-in event: {str(e)}", exc_info=True)
+                    
                     return record
                     
                 except Exception as e:
@@ -532,6 +557,31 @@ class AttendanceService:
                                     exc_info=True
                                 )
                                 # Continue processing (graceful degradation)
+                        
+                        # Trigger Pusher event for real-time updates
+                        if self.pusher_service and self.pusher_service.is_enabled():
+                            try:
+                                # Fetch additional member details for richer notifications
+                                member_details = self._get_member_details(person_id, person_type)
+                                
+                                pusher_data = {
+                                    'id': record.id,
+                                    'person_id': person_id,
+                                    'person_name': person_name,
+                                    'person_type': person_type,
+                                    'check_in_time': record.check_in_time.isoformat(),
+                                    'check_out_time': timestamp.isoformat(),
+                                    'stay_duration': record.stay_duration,
+                                    'timestamp': timestamp.isoformat()
+                                }
+                                
+                                # Add member-specific details if available
+                                if member_details:
+                                    pusher_data.update(member_details)
+                                
+                                self.pusher_service.trigger_check_out(pusher_data)
+                            except Exception as e:
+                                logger.error(f"Failed to trigger Pusher check-out event: {str(e)}", exc_info=True)
                         
                         return record
                     else:
@@ -882,3 +932,67 @@ class AttendanceService:
                 exc_info=True
             )
             self.db_session.rollback()
+    
+    def _get_member_details(self, person_id: str, person_type: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch additional member details for rich notifications.
+        
+        Args:
+            person_id: ID of the person
+            person_type: Type of person ('member' or 'trainer')
+            
+        Returns:
+            Dictionary with member details or None
+        """
+        try:
+            if person_type != 'member':
+                return None
+            
+            from models.member_profile import MemberProfile
+            from models.package import Package
+            
+            member = self.db_session.query(MemberProfile).filter_by(id=person_id).first()
+            if not member:
+                return None
+            
+            details = {
+                'member_number': member.member_number,
+                'phone': member.phone,
+                'package_start_date': member.package_start_date.isoformat() if member.package_start_date else None,
+                'package_expiry_date': member.package_expiry_date.isoformat() if member.package_expiry_date else None,
+                'is_frozen': member.is_frozen,
+                'profile_picture': member.profile_picture
+            }
+            
+            # Calculate days until expiry
+            if member.package_expiry_date:
+                now = datetime.now(timezone.utc)
+                expiry = member.package_expiry_date
+                if expiry.tzinfo is None:
+                    expiry = expiry.replace(tzinfo=timezone.utc)
+                
+                days_left = (expiry - now).days
+                details['days_until_expiry'] = days_left
+                
+                # Add status based on days left
+                if days_left < 0:
+                    details['package_status'] = 'expired'
+                elif days_left <= 3:
+                    details['package_status'] = 'expiring_soon'
+                elif days_left <= 7:
+                    details['package_status'] = 'expiring_this_week'
+                else:
+                    details['package_status'] = 'active'
+            
+            # Get package name and duration
+            if member.current_package_id:
+                package = self.db_session.query(Package).filter_by(id=member.current_package_id).first()
+                if package:
+                    details['package_name'] = package.name
+                    details['package_duration_days'] = package.duration_days
+            
+            return details
+            
+        except Exception as e:
+            logger.error(f"Error fetching member details: {str(e)}", exc_info=True)
+            return None

@@ -12,6 +12,7 @@ export default function AdminFinance() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(null)
+  const [showReverseModal, setShowReverseModal] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredTransactions, setFilteredTransactions] = useState([])
   const [sortField, setSortField] = useState('due_date')
@@ -299,6 +300,42 @@ Modern Fitness Gym`
       setError('Failed to mark payment')
       console.error('Mark paid error:', err)
     }
+  }
+
+  const handleReversePayment = async (transactionId) => {
+    // Show custom modal instead of browser confirm
+    const transaction = transactions.find(t => t.id === transactionId)
+    setShowReverseModal(transaction)
+  }
+
+  const confirmReversePayment = async () => {
+    if (!showReverseModal) return
+    
+    try {
+      await apiClient.post(`/admin/finance/transactions/${showReverseModal.id}/reverse-payment`)
+      setSuccess('Payment reversed successfully')
+      setShowReverseModal(null)
+      
+      // Refresh data
+      await fetchData()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to reverse payment')
+      setShowReverseModal(null)
+      console.error('Reverse payment error:', err)
+    }
+  }
+
+  const canReversePayment = (transaction) => {
+    if (!transaction.paid_date || transaction.is_reversed || transaction.status !== 'COMPLETED') {
+      return false
+    }
+    
+    // Check if within 24 hours
+    const paidDate = new Date(transaction.paid_date)
+    const now = new Date()
+    const hoursSincePayment = (now - paidDate) / (1000 * 60 * 60)
+    
+    return hoursSincePayment < 24
   }
 
   const handlePrintReceipt = (transaction) => {
@@ -1046,15 +1083,29 @@ Modern Fitness Gym`
                                   Frozen
                                 </span>
                               ) : (
-                                <button
-                                  onClick={() => handlePrintReceipt(transaction)}
-                                  className="w-20 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500 px-2 py-1 rounded-md transition-all font-semibold text-xs shadow-md hover:scale-105 flex items-center justify-center gap-1 whitespace-nowrap"
-                                >
-                                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                  </svg>
-                                  Print
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handlePrintReceipt(transaction)}
+                                    className="w-20 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500 px-2 py-1 rounded-md transition-all font-semibold text-xs shadow-md hover:scale-105 flex items-center justify-center gap-1 whitespace-nowrap"
+                                  >
+                                    <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print
+                                  </button>
+                                  {canReversePayment(transaction) && (
+                                    <button
+                                      onClick={() => handleReversePayment(transaction.id)}
+                                      className="w-20 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500 px-2 py-1 rounded-md transition-all font-semibold text-xs shadow-md hover:scale-105 flex items-center justify-center gap-1 whitespace-nowrap"
+                                      title="Reverse payment (available for 24 hours)"
+                                    >
+                                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                      </svg>
+                                      Reverse
+                                    </button>
+                                  )}
+                                </>
                               )
                             )}
                           </div>
@@ -1067,6 +1118,62 @@ Modern Fitness Gym`
             </table>
           </div>
         </div>
+
+        {/* Reverse Payment Confirmation Modal */}
+        {showReverseModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-fitnix-charcoal border-2 border-orange-500 rounded-2xl p-8 max-w-md w-full shadow-2xl shadow-orange-500/20">
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center animate-pulse">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              </div>
+              
+              <h3 className="text-2xl font-bold text-fitnix-off-white mb-3 text-center">Reverse Payment?</h3>
+              <p className="text-fitnix-off-white/80 text-center mb-2">
+                Are you sure you want to reverse this payment?
+              </p>
+              <p className="text-orange-400 text-sm text-center mb-6 font-semibold">
+                This will reset the transaction to PENDING status and remove the next month's auto-generated transaction.
+              </p>
+              
+              {/* Transaction Details */}
+              <div className="bg-fitnix-black/50 rounded-lg p-4 mb-6 border border-orange-500/20">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-fitnix-off-white/60 text-sm">Member:</span>
+                  <span className="text-fitnix-off-white font-bold">{members[showReverseModal.member_id]?.full_name || 'Unknown'}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-fitnix-off-white/60 text-sm">Amount:</span>
+                  <span className="text-orange-400 font-bold text-lg">Rs. {showReverseModal.amount?.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-fitnix-off-white/60 text-sm">Paid Date:</span>
+                  <span className="text-fitnix-off-white font-semibold text-sm">
+                    {showReverseModal.paid_date ? new Date(showReverseModal.paid_date).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={confirmReversePayment}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl transition-all hover:scale-105 shadow-lg hover:shadow-orange-500/50 uppercase tracking-wide"
+                >
+                  Yes, Reverse
+                </button>
+                <button
+                  onClick={() => setShowReverseModal(null)}
+                  className="flex-1 bg-fitnix-black hover:bg-fitnix-black/80 text-fitnix-off-white font-bold py-3 px-6 rounded-xl transition-all border-2 border-fitnix-off-white/20 hover:border-fitnix-off-white/40 uppercase tracking-wide"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stylish Print Receipt Modal */}
         {showPrintModal && (

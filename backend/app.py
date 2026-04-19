@@ -224,6 +224,7 @@ def create_app(config=None):
         from services.biometric_service import BiometricDeviceClient
         from services.attendance_service import AttendanceService
         from services.notification_service import NotificationService
+        from services.pusher_service import PusherService
         
         app.logger.info("Initializing attendance service...")
         
@@ -235,13 +236,22 @@ def create_app(config=None):
         # Create notification service
         notification_service = NotificationService(socketio=socketio)
         
+        # Create Pusher service for real-time notifications
+        pusher_service = PusherService(
+            app_id=os.getenv('PUSHER_APP_ID'),
+            key=os.getenv('PUSHER_KEY'),
+            secret=os.getenv('PUSHER_SECRET'),
+            cluster=os.getenv('PUSHER_CLUSTER', 'mt1')
+        )
+        
         # Create attendance service with dependencies
         with app.app_context():
             attendance_service = AttendanceService(
                 device_client=device_client,
                 db_session=db.session,
                 notification_emitter=notification_service,
-                app=app
+                app=app,
+                pusher_service=pusher_service
             )
             
             # Start sync loop (3-second interval for near-instant notifications)
@@ -255,6 +265,7 @@ def create_app(config=None):
     
     # Store attendance service and device client in app config for access in routes
     app.config['attendance_service'] = attendance_service
+    app.config['pusher_service'] = pusher_service if 'pusher_service' in locals() else None
     if 'device_client' in locals():
         app.config['biometric_device_client'] = device_client
     

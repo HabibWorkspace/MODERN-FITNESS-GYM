@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -34,6 +36,9 @@ ChartJS.register(
 export default function AdminAnalytics() {
   const [revenue, setRevenue] = useState(null)
   const [revenueTrend, setRevenueTrend] = useState(null)
+  const [dailyRevenue, setDailyRevenue] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [dateRevenue, setDateRevenue] = useState(null)
   const [memberGrowth, setMemberGrowth] = useState(null)
   const [members, setMembers] = useState([])
   const [packages, setPackages] = useState([])
@@ -51,6 +56,7 @@ export default function AdminAnalytics() {
       const results = await Promise.allSettled([
         apiClient.get('/admin/dashboard/revenue-projection'),
         apiClient.get('/admin/dashboard/revenue-trend'),
+        apiClient.get('/admin/dashboard/daily-revenue'),
         apiClient.get('/admin/dashboard/member-growth'),
         apiClient.get('/admin/members'),
         apiClient.get('/packages'),
@@ -59,10 +65,11 @@ export default function AdminAnalytics() {
 
       if (results[0].status === 'fulfilled') setRevenue(results[0].value.data)
       if (results[1].status === 'fulfilled') setRevenueTrend(results[1].value.data)
-      if (results[2].status === 'fulfilled') setMemberGrowth(results[2].value.data)
-      if (results[3].status === 'fulfilled') setMembers(results[3].value.data.members || [])
-      if (results[4].status === 'fulfilled') setPackages(results[4].value.data.packages || [])
-      if (results[5].status === 'fulfilled') setTransactions(results[5].value.data.payments || [])
+      if (results[2].status === 'fulfilled') setDailyRevenue(results[2].value.data)
+      if (results[3].status === 'fulfilled') setMemberGrowth(results[3].value.data)
+      if (results[4].status === 'fulfilled') setMembers(results[4].value.data.members || [])
+      if (results[5].status === 'fulfilled') setPackages(results[5].value.data.packages || [])
+      if (results[6].status === 'fulfilled') setTransactions(results[6].value.data.payments || [])
 
       if (results[0].status === 'rejected') {
         setError('Failed to load some analytics data')
@@ -79,6 +86,38 @@ export default function AdminAnalytics() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     navigate('/login')
+  }
+
+  const handleDateSearch = async () => {
+    if (!selectedDate) {
+      setError('Please select a date')
+      return
+    }
+
+    try {
+      // Calculate revenue for selected date
+      const searchDate = new Date(selectedDate)
+      const dayStart = new Date(searchDate.setHours(0, 0, 0, 0))
+      const dayEnd = new Date(searchDate.setHours(23, 59, 59, 999))
+
+      // Filter transactions for the selected date
+      const dayTransactions = transactions.filter(t => {
+        if (t.status !== 'COMPLETED' || !t.paid_date || t.is_reversed) return false
+        const paidDate = new Date(t.paid_date)
+        return paidDate >= dayStart && paidDate <= dayEnd
+      })
+
+      const totalRevenue = dayTransactions.reduce((sum, t) => sum + (t.amount || 0), 0)
+      
+      setDateRevenue({
+        date: selectedDate.toISOString().split('T')[0],
+        revenue: totalRevenue,
+        transactionCount: dayTransactions.length
+      })
+    } catch (err) {
+      setError('Failed to calculate revenue for selected date')
+      console.error(err)
+    }
   }
 
   const calculateMRRGrowth = () => {
@@ -196,6 +235,33 @@ export default function AdminAnalytics() {
         pointBorderWidth: 2,
         pointRadius: 5,
         pointHoverRadius: 7
+      }]
+    }
+  }
+
+  const getDailyRevenueChartData = () => {
+    if (!dailyRevenue) {
+      return {
+        labels: [],
+        datasets: [{
+          label: 'Daily Revenue (Rs.)',
+          data: [],
+          backgroundColor: 'rgba(59, 130, 246, 0.8)',
+          borderColor: '#3B82F6',
+          borderWidth: 2
+        }]
+      }
+    }
+    return {
+      labels: dailyRevenue.days,
+      datasets: [{
+        label: 'Daily Revenue (Rs.)',
+        data: dailyRevenue.revenue,
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: '#3B82F6',
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: 'rgba(59, 130, 246, 1)'
       }]
     }
   }
@@ -486,6 +552,139 @@ export default function AdminAnalytics() {
             </div>
           </div>
         </div>
+
+        {/* Daily Revenue Chart */}
+        <div className="fitnix-card-glow backdrop-blur-xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-fitnix-off-white mb-2">Daily Revenue (Last 30 Days)</h2>
+              <p className="text-fitnix-off-white/60 text-xs sm:text-sm">
+                Track daily revenue performance and identify trends
+              </p>
+            </div>
+            
+            {/* Date Search with React DatePicker */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <DatePicker
+                selected={selectedDate}
+                onChange={(date) => setSelectedDate(date)}
+                maxDate={new Date()}
+                dateFormat="MMM dd, yyyy"
+                placeholderText="Select date"
+                className="px-3 py-2 bg-fitnix-black border-2 border-fitnix-charcoal focus:border-blue-500 rounded-lg text-fitnix-off-white text-sm focus:outline-none transition-colors w-full sm:w-auto"
+                wrapperClassName="w-full sm:w-auto"
+                calendarClassName="bg-fitnix-charcoal border-2 border-fitnix-lime"
+              />
+              <button
+                onClick={handleDateSearch}
+                disabled={!selectedDate}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition-all hover:scale-105 shadow-md whitespace-nowrap"
+              >
+                Search
+              </button>
+            </div>
+          </div>
+
+          {/* Date Revenue Result */}
+          {dateRevenue && (
+            <div className="mb-4 p-4 bg-blue-500/10 border-2 border-blue-500/30 rounded-lg">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <p className="text-fitnix-off-white/60 text-sm font-semibold mb-1">
+                    Revenue for {new Date(dateRevenue.date).toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                  <p className="text-3xl font-extrabold text-blue-400">
+                    Rs. {dateRevenue.revenue.toLocaleString()}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-fitnix-off-white/60 text-xs font-semibold mb-1">Transactions</p>
+                  <p className="text-2xl font-bold text-fitnix-lime">{dateRevenue.transactionCount}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDateRevenue(null)
+                    setSelectedDate(null)
+                  }}
+                  className="text-fitnix-off-white/60 hover:text-fitnix-off-white transition-colors"
+                  title="Clear search"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="h-64 sm:h-80">
+            <Bar 
+              data={getDailyRevenueChartData()} 
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  legend: {
+                    display: false
+                  }
+                }
+              }} 
+            />
+          </div>
+        </div>
+
+        {/* Custom DatePicker Styles */}
+        <style>{`
+          .react-datepicker {
+            background-color: #1a1a1a !important;
+            border: 2px solid #B6FF00 !important;
+            border-radius: 12px !important;
+            font-family: inherit !important;
+          }
+          .react-datepicker__header {
+            background-color: #2a2a2a !important;
+            border-bottom: 1px solid #B6FF00 !important;
+            border-radius: 12px 12px 0 0 !important;
+          }
+          .react-datepicker__current-month,
+          .react-datepicker__day-name {
+            color: #B6FF00 !important;
+            font-weight: 700 !important;
+          }
+          .react-datepicker__day {
+            color: #f5f5f5 !important;
+          }
+          .react-datepicker__day:hover {
+            background-color: #B6FF00 !important;
+            color: #0B0B0B !important;
+            border-radius: 8px !important;
+          }
+          .react-datepicker__day--selected {
+            background-color: #3B82F6 !important;
+            color: white !important;
+            border-radius: 8px !important;
+          }
+          .react-datepicker__day--keyboard-selected {
+            background-color: #3B82F6 !important;
+            color: white !important;
+            border-radius: 8px !important;
+          }
+          .react-datepicker__day--disabled {
+            color: #666 !important;
+            cursor: not-allowed !important;
+          }
+          .react-datepicker__navigation-icon::before {
+            border-color: #B6FF00 !important;
+          }
+          .react-datepicker__triangle {
+            display: none !important;
+          }
+        `}</style>
       </div>
     </AdminLayout>
   )

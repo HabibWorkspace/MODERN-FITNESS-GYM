@@ -81,6 +81,61 @@ def sync_log_from_local():
         
         current_app.logger.info(f"Synced attendance log: {person_name} at {timestamp}")
         
+        # Trigger Pusher event for real-time notification
+        pusher_service = current_app.config.get('pusher_service')
+        if pusher_service and pusher_service.is_enabled():
+            try:
+                # Fetch additional member details for richer notifications
+                pusher_data = {
+                    'id': record.id,
+                    'person_id': mapping.person_id,
+                    'person_name': person_name or f"{mapping.person_type.capitalize()} {mapping.person_id[:8]}",
+                    'person_type': mapping.person_type,
+                    'check_in_time': timestamp.isoformat(),
+                    'timestamp': timestamp.isoformat()
+                }
+                
+                # Add member-specific details if it's a member
+                if mapping.person_type == 'member':
+                    member = MemberProfile.query.get(mapping.person_id)
+                    if member:
+                        pusher_data['member_number'] = member.member_number
+                        pusher_data['phone'] = member.phone
+                        pusher_data['profile_picture'] = member.profile_picture
+                        pusher_data['is_frozen'] = member.is_frozen
+                        pusher_data['package_start_date'] = member.package_start_date.isoformat() if member.package_start_date else None
+                        
+                        if member.package_expiry_date:
+                            from datetime import timezone as tz
+                            now = datetime.now(tz.utc)
+                            expiry = member.package_expiry_date
+                            if expiry.tzinfo is None:
+                                expiry = expiry.replace(tzinfo=tz.utc)
+                            
+                            days_left = (expiry - now).days
+                            pusher_data['package_expiry_date'] = member.package_expiry_date.isoformat()
+                            pusher_data['days_until_expiry'] = days_left
+                            
+                            if days_left < 0:
+                                pusher_data['package_status'] = 'expired'
+                            elif days_left <= 3:
+                                pusher_data['package_status'] = 'expiring_soon'
+                            elif days_left <= 7:
+                                pusher_data['package_status'] = 'expiring_this_week'
+                            else:
+                                pusher_data['package_status'] = 'active'
+                        
+                        if member.current_package_id:
+                            from models.package import Package
+                            package = Package.query.get(member.current_package_id)
+                            if package:
+                                pusher_data['package_name'] = package.name
+                                pusher_data['package_duration_days'] = package.duration_days
+                
+                pusher_service.trigger_check_in(pusher_data)
+            except Exception as e:
+                current_app.logger.error(f"Failed to trigger Pusher event: {e}")
+        
         return jsonify({'success': True, 'id': record.id}), 201
         
     except Exception as e:
