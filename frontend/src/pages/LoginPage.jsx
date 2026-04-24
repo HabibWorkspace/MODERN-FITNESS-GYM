@@ -9,6 +9,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Forgot password modal state
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [selectedEmail, setSelectedEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSuccess, setForgotSuccess] = useState('')
+  const [forgotError, setForgotError] = useState('')
+
   const navigate = useNavigate()
   const iconsContainerRef = useRef(null)
 
@@ -347,6 +355,33 @@ export default function LoginPage() {
     }
   }
 
+  const handleForgotPassword = async () => {
+    if (!selectedEmail) {
+      setForgotError('Please select a recovery email address')
+      return
+    }
+    setForgotLoading(true)
+    setForgotError('')
+    setForgotSuccess('')
+    try {
+      const res = await apiClient.post('/auth/forgot-password', {
+        recovery_email: selectedEmail
+      })
+      setForgotSuccess(res.data.message)
+    } catch (err) {
+      setForgotError(err.response?.data?.error || 'Failed to send reset email. Try again.')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false)
+    setSelectedEmail('')
+    setForgotError('')
+    setForgotSuccess('')
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-fitnix-black">
       {/* Dark Background */}
@@ -487,6 +522,17 @@ export default function LoginPage() {
                   'Login'
                 )}
               </button>
+
+              {/* Forgot Password Link */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-fitnix-lime/70 hover:text-fitnix-lime text-sm font-medium transition-colors underline-offset-2 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               
               {/* Loading message for slow backend */}
               {loading && (
@@ -503,6 +549,128 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-fitnix-charcoal border-2 border-fitnix-lime/40 rounded-2xl p-8 w-full max-w-sm shadow-2xl shadow-fitnix-lime/10 animate-fadeInUp">
+
+            {/* Icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-full bg-fitnix-lime/10 border-2 border-fitnix-lime/30 flex items-center justify-center">
+                <svg className="w-8 h-8 text-fitnix-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+            </div>
+
+            <h3 className="text-xl font-bold text-fitnix-off-white text-center mb-1">Forgot Password?</h3>
+            <p className="text-fitnix-off-white/60 text-sm text-center mb-6">
+              Select where to send the reset link
+            </p>
+
+            {/* Success State */}
+            {forgotSuccess ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-fitnix-lime/10 border border-fitnix-lime/30 rounded-xl text-center">
+                  <svg className="w-10 h-10 text-fitnix-lime mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-fitnix-lime font-semibold text-sm">{forgotSuccess}</p>
+                  <p className="text-fitnix-off-white/50 text-xs mt-1">Check your inbox and spam folder</p>
+                </div>
+                <button
+                  onClick={closeForgotModal}
+                  className="w-full py-3 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black font-bold rounded-xl transition-all"
+                >
+                  Back to Login
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Error */}
+                {forgotError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/40 rounded-lg text-red-400 text-sm text-center">
+                    {forgotError}
+                  </div>
+                )}
+
+                {/* Email Option 1 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedEmail('touqqeer')}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                    selectedEmail === 'touqqeer'
+                      ? 'border-fitnix-lime bg-fitnix-lime/10'
+                      : 'border-fitnix-charcoal hover:border-fitnix-lime/40 bg-fitnix-black/40'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                    selectedEmail === 'touqqeer' ? 'border-fitnix-lime' : 'border-fitnix-off-white/30'
+                  }`}>
+                    {selectedEmail === 'touqqeer' && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-fitnix-lime" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-fitnix-off-white font-semibold text-sm">Touqqeer's Email</p>
+                    <p className="text-fitnix-off-white/50 text-xs">To***@gmail.com</p>
+                  </div>
+                </button>
+
+                {/* Email Option 2 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedEmail('habib')}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                    selectedEmail === 'habib'
+                      ? 'border-fitnix-lime bg-fitnix-lime/10'
+                      : 'border-fitnix-charcoal hover:border-fitnix-lime/40 bg-fitnix-black/40'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                    selectedEmail === 'habib' ? 'border-fitnix-lime' : 'border-fitnix-off-white/30'
+                  }`}>
+                    {selectedEmail === 'habib' && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-fitnix-lime" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-fitnix-off-white font-semibold text-sm">Habib's Email</p>
+                    <p className="text-fitnix-off-white/50 text-xs">m.***@gmail.com</p>
+                  </div>
+                </button>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeForgotModal}
+                    className="flex-1 py-3 bg-fitnix-black border-2 border-fitnix-off-white/20 hover:border-fitnix-off-white/40 text-fitnix-off-white font-bold rounded-xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={forgotLoading || !selectedEmail}
+                    className="flex-1 py-3 bg-fitnix-lime hover:bg-fitnix-dark-lime disabled:opacity-50 disabled:cursor-not-allowed text-fitnix-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    {forgotLoading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-fitnix-black border-t-transparent rounded-full animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Link'
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

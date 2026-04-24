@@ -17,12 +17,14 @@ from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from flask_mail import Mail
 from database import db
 from config import get_config
 
 # Initialize extensions
 jwt = JWTManager()
 socketio = SocketIO()
+mail = Mail()
 
 
 def create_app(config=None):
@@ -59,6 +61,7 @@ def create_app(config=None):
     # Initialize extensions
     db.init_app(app)
     jwt.init_app(app)
+    mail.init_app(app)
     
     # Initialize Flask-SocketIO with CORS support
     socketio.init_app(app, 

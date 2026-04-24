@@ -7,6 +7,12 @@ from services.password_service import PasswordService
 
 auth_bp = Blueprint('auth', __name__)
 
+# Two hardcoded recovery email addresses for admin password reset
+RECOVERY_EMAILS = {
+    'touqqeer': 'Touqqeer@gmail.com',
+    'habib': 'm.habib.workspace@gmail.com'
+}
+
 
 @auth_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
@@ -112,6 +118,65 @@ def refresh():
     token = AuthService.generate_token(user.id, user.username, user.role.value)
     
     return jsonify({'access_token': token}), 200
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """
+    Initiate password reset for admin user.
+    Sends reset link to one of the two hardcoded recovery emails.
+
+    Request body:
+        {
+            "recovery_email": "touqqeer" | "habib"
+        }
+    """
+    data = request.get_json()
+    if not data or not data.get('recovery_email'):
+        return jsonify({'error': 'Please select a recovery email'}), 400
+
+    recovery_key = data.get('recovery_email').lower().strip()
+    if recovery_key not in RECOVERY_EMAILS:
+        return jsonify({'error': 'Invalid recovery email selection'}), 400
+
+    target_email = RECOVERY_EMAILS[recovery_key]
+
+    try:
+        import secrets
+        from datetime import datetime, timedelta
+        from database import db
+
+        # Find the admin user
+        admin_user = User.query.filter_by(role=UserRole.ADMIN).first()
+        if not admin_user:
+            return jsonify({'message': 'If an admin account exists, a reset link has been sent'}), 200
+
+        # Generate secure token (64 hex chars)
+        reset_token = secrets.token_hex(32)
+        admin_user.reset_token = reset_token
+        admin_user.reset_token_expiry = datetime.utcnow() + timedelta(hours=24)
+        db.session.commit()
+
+        # Send email
+        from services.email_service import EmailService
+        sent = EmailService.send_password_reset_email(
+            email=target_email,
+            username=admin_user.username,
+            reset_token=reset_token
+        )
+
+        if sent:
+            parts = target_email.split('@')
+            masked = parts[0][:2] + '***@' + parts[1]
+            return jsonify({'message': f'Password reset link sent to {masked}'}), 200
+        else:
+            return jsonify({'error': 'Failed to send email. Check SMTP configuration.'}), 500
+
+    except Exception as e:
+        from database import db
+        db.session.rollback()
+        current_app.logger.error(f"Forgot password error: {str(e)}")
+        return jsonify({'error': 'Server error. Please try again.'}), 500
 
 
 @auth_bp.route('/reset-password', methods=['POST'])
