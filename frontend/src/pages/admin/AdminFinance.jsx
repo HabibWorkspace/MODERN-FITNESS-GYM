@@ -13,6 +13,8 @@ export default function AdminFinance() {
   const [success, setSuccess] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(null)
   const [showReverseModal, setShowReverseModal] = useState(null)
+  const [showMarkPaidModal, setShowMarkPaidModal] = useState(null)
+  const [paymentDescription, setPaymentDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredTransactions, setFilteredTransactions] = useState([])
   const [sortField, setSortField] = useState('due_date')
@@ -271,23 +273,40 @@ Modern Fitness Gym`
   }
 
   const handleMarkPaid = async (transactionId) => {
-    // Get transaction data BEFORE marking as paid
+    // Show modal to get optional description
     const transaction = transactions.find(t => t.id === transactionId)
     if (!transaction) {
       setError('Transaction not found')
       return
     }
+    setShowMarkPaidModal(transaction)
+  }
+
+  const confirmMarkPaid = async () => {
+    if (!showMarkPaidModal) return
+    
+    const transactionId = showMarkPaidModal.id
+    const transaction = showMarkPaidModal
     
     try {
-      // Prepare request body - include data for virtual transactions
+      // Prepare request body - include description if provided
       const requestBody = {
         member_id: transaction.member_id,
         amount: transaction.amount,
         due_date: transaction.due_date
       }
       
+      // Add description if provided
+      if (paymentDescription.trim()) {
+        requestBody.description = paymentDescription.trim()
+      }
+      
       await apiClient.post(`/admin/finance/transactions/${transactionId}/mark-paid`, requestBody)
       setSuccess('Payment marked as paid successfully')
+      
+      // Reset modal and description
+      setShowMarkPaidModal(null)
+      setPaymentDescription('')
       
       // Refresh data
       await fetchData()
@@ -299,6 +318,8 @@ Modern Fitness Gym`
     } catch (err) {
       setError('Failed to mark payment')
       console.error('Mark paid error:', err)
+      setShowMarkPaidModal(null)
+      setPaymentDescription('')
     }
   }
 
@@ -1118,6 +1139,74 @@ Modern Fitness Gym`
             </table>
           </div>
         </div>
+
+        {/* Mark as Paid Confirmation Modal with Description */}
+        {showMarkPaidModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-fitnix-charcoal border-2 border-fitnix-lime rounded-2xl p-8 max-w-md w-full shadow-2xl shadow-fitnix-lime/20">
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-20 h-20 bg-fitnix-lime rounded-full flex items-center justify-center animate-pulse">
+                  <svg className="w-10 h-10 text-fitnix-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              
+              <h3 className="text-2xl font-bold text-fitnix-off-white mb-3 text-center">Mark as Paid</h3>
+              <p className="text-fitnix-off-white/80 text-center mb-6">
+                Confirm payment for this transaction
+              </p>
+              
+              {/* Transaction Details */}
+              <div className="bg-fitnix-black/50 rounded-lg p-4 mb-4 border border-fitnix-lime/20">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-fitnix-off-white/60 text-sm">Member:</span>
+                  <span className="text-fitnix-off-white font-bold">{members[showMarkPaidModal.member_id]?.full_name || 'Unknown'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-fitnix-off-white/60 text-sm">Amount:</span>
+                  <span className="text-fitnix-lime font-bold text-lg">Rs. {showMarkPaidModal.amount?.toLocaleString()}</span>
+                </div>
+              </div>
+              
+              {/* Optional Description Input */}
+              <div className="mb-6">
+                <label className="block text-fitnix-off-white/80 text-sm font-semibold mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={paymentDescription}
+                  onChange={(e) => setPaymentDescription(e.target.value)}
+                  placeholder="e.g., Paid half, Partial payment, etc."
+                  className="w-full bg-fitnix-black/50 border border-fitnix-off-white/20 rounded-lg px-4 py-3 text-fitnix-off-white placeholder-fitnix-off-white/40 focus:outline-none focus:border-fitnix-lime transition-colors resize-none"
+                  rows="3"
+                  maxLength="200"
+                />
+                <p className="text-fitnix-off-white/40 text-xs mt-1">
+                  {paymentDescription.length}/200 characters
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={confirmMarkPaid}
+                  className="flex-1 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black font-bold py-3 px-6 rounded-xl transition-all hover:scale-105 shadow-lg hover:shadow-fitnix-lime/50 uppercase tracking-wide"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMarkPaidModal(null)
+                    setPaymentDescription('')
+                  }}
+                  className="flex-1 bg-fitnix-black hover:bg-fitnix-black/80 text-fitnix-off-white font-bold py-3 px-6 rounded-xl transition-all border-2 border-fitnix-off-white/20 hover:border-fitnix-off-white/40 uppercase tracking-wide"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Reverse Payment Confirmation Modal */}
         {showReverseModal && (

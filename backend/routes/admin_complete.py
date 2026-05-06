@@ -76,7 +76,7 @@ def export_members_excel():
         
         # Define headers (only essential columns)
         headers = [
-            'Member ID', 'Full Name', 'Phone', 'Email', 'Gender', 
+            'Member ID', 'Full Name', 'Phone', 'Gender', 
             'Date of Birth', 'Admission Date', 'Current Package', 'Trainer', 'Status'
         ]
         
@@ -131,7 +131,6 @@ def export_members_excel():
                 member.member_number or 'N/A',
                 member.full_name or 'N/A',
                 member.phone or 'N/A',
-                member.email or 'N/A',
                 member.gender or 'N/A',
                 dob,
                 admission,
@@ -155,9 +154,8 @@ def export_members_excel():
             'A': 12,  # Member ID
             'B': 25,  # Full Name
             'C': 15,  # Phone
-            'D': 25,  # Email
-            'E': 10,  # Gender
-            'F': 15,  # DOB
+            'D': 10,  # Gender
+            'E': 15,  # DOB
             'G': 15,  # Admission Date
             'H': 20,  # Package
             'I': 20,  # Trainer
@@ -398,11 +396,8 @@ def create_member():
     
     try:
         # Create user with auto-generated username
-        # Use email if provided, otherwise use phone
-        if data.get('email'):
-            auto_username = data['email'].split('@')[0] + '_' + str(uuid.uuid4())[:8]
-        else:
-            auto_username = 'member_' + data['phone'][-4:] + '_' + str(uuid.uuid4())[:8]
+        # Use phone to generate username
+        auto_username = 'member_' + data['phone'][-4:] + '_' + str(uuid.uuid4())[:8]
         auto_password = str(uuid.uuid4())
         
         user = User(
@@ -452,7 +447,6 @@ def create_member():
         # Create member profile
         # Convert empty strings to None for optional fields
         cnic_value = data.get('cnic') if data.get('cnic') else None
-        email_value = data.get('email') if data.get('email') else None
         
         member = MemberProfile(
             user_id=user.id,
@@ -460,7 +454,6 @@ def create_member():
             full_name=data['full_name'],
             phone=data['phone'],
             cnic=cnic_value,  # None if empty
-            email=email_value,  # None if empty
             gender=data.get('gender'),
             date_of_birth=dob,
             admission_date=admission_date,
@@ -546,8 +539,6 @@ def update_member(member_id):
             member.full_name = data['full_name']
         if 'phone' in data:
             member.phone = data['phone']
-        if 'email' in data:
-            member.email = data['email']
         if 'cnic' in data:
             member.cnic = data['cnic']
         if 'address' in data:
@@ -560,10 +551,14 @@ def update_member(member_id):
             member.profile_picture = data['profile_picture']
         
         # Handle package assignment (accept both package_id and current_package_id)
+        package_changed = False
+        old_package_id = member.current_package_id
+        
         if 'package_id' in data:
             new_package_id = data['package_id'] if data['package_id'] else None
             # If package changed, recalculate dates
             if new_package_id != member.current_package_id and new_package_id:
+                package_changed = True
                 package = Package.query.get(new_package_id)
                 if package:
                     # Only auto-set dates if not provided
@@ -577,6 +572,7 @@ def update_member(member_id):
             new_package_id = data['current_package_id'] if data['current_package_id'] else None
             # If package changed, recalculate dates
             if new_package_id != member.current_package_id and new_package_id:
+                package_changed = True
                 package = Package.query.get(new_package_id)
                 if package:
                     # Only auto-set dates if not provided
@@ -603,8 +599,64 @@ def update_member(member_id):
                 pass
         
         # Handle trainer assignment
+        trainer_changed = False
         if 'trainer_id' in data:
-            member.trainer_id = data['trainer_id'] if data['trainer_id'] else None
+            old_trainer_id = member.trainer_id
+            new_trainer_id = data['trainer_id'] if data['trainer_id'] else None
+            if old_trainer_id != new_trainer_id:
+                trainer_changed = True
+            member.trainer_id = new_trainer_id
+        
+        # If package or trainer changed, update all PENDING transactions for this member
+        if package_changed or trainer_changed:
+            # Get the new package and trainer details
+            new_package = Package.query.get(member.current_package_id) if member.current_package_id else None
+            new_trainer = TrainerProfile.query.get(member.trainer_id) if member.trainer_id else None
+            
+            # Calculate new amounts (works even if package is None)
+            new_package_price = float(new_package.price) if new_package and new_package.price else 0
+            new_trainer_fee = float(new_trainer.salary_rate) if new_trainer and new_trainer.salary_rate else 0
+            new_total_amount = new_package_price + new_trainer_fee
+            
+            # Update all PENDING transactions for this member
+            # This handles all scenarios:
+            # - Package upgrade/downgrade (Basic → Combo)
+            # - Trainer added (None → Trainer)
+            # - Trainer removed (Trainer → None)
+            # - Trainer changed (Trainer1 → Trainer2)
+            pending_transactions = Transaction.query.filter_by(
+                member_id=member.id,
+                status=TransactionStatus.PENDING
+            ).all()
+            
+            if pending_transactions:
+                # Update existing pending transactions
+                for txn in pending_transactions:
+                    txn.package_price = new_package_price
+                    txn.trainer_fee = new_trainer_fee
+                    txn.amount = new_total_amount
+            elif package_changed and new_package and not member.is_frozen:
+                # No pending transactions exist, create a new one for current month
+                # Calculate due date (30 days from now or package start date)
+                if member.package_start_date:
+                    due_date = member.package_start_date + timedelta(days=30)
+                else:
+                    due_date = datetime.utcnow() + timedelta(days=30)
+                
+                # Create new transaction
+                new_transaction = Transaction(
+                    member_id=member.id,
+                    amount=new_total_amount,
+                    transaction_type=TransactionType.PAYMENT,
+                    status=TransactionStatus.PENDING,
+                    due_date=due_date,
+                    trainer_fee=new_trainer_fee,
+                    package_price=new_package_price,
+                    discount_amount=0,
+                    discount_type='fixed',
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(new_transaction)
         
         if 'gender' in data:
             member.gender = data['gender']
@@ -1262,7 +1314,8 @@ def get_member_payments_fixed():
                     'discount_type': transaction.discount_type or 'fixed',
                     'is_reversed': getattr(transaction, 'is_reversed', False),
                     'reversed_at': transaction.reversed_at.isoformat() + 'Z' if hasattr(transaction, 'reversed_at') and transaction.reversed_at else None,
-                    'reversed_by': getattr(transaction, 'reversed_by', None)
+                    'reversed_by': getattr(transaction, 'reversed_by', None),
+                    'description': getattr(transaction, 'description', None)
                 })
             except Exception as item_error:
                 continue
@@ -1277,6 +1330,8 @@ def get_member_payments_fixed():
 def mark_transaction_paid(transaction_id):
     """Mark a transaction as paid and create next month's transaction."""
     try:
+        data = request.get_json() or {}
+        
         transaction = Transaction.query.get(transaction_id)
         if not transaction:
             return jsonify({'error': 'Transaction not found'}), 404
@@ -1290,6 +1345,10 @@ def mark_transaction_paid(transaction_id):
         transaction.status = TransactionStatus.COMPLETED
         transaction.paid_date = datetime.utcnow()
         
+        # Add optional description (e.g., "Paid half", "Partial payment", etc.)
+        if 'description' in data and data['description']:
+            transaction.description = data['description'].strip()
+        
         # If this is an admission fee, mark admission_fee_paid on member
         if transaction.transaction_type.value == 'ADMISSION':
             if member:
@@ -1298,20 +1357,21 @@ def mark_transaction_paid(transaction_id):
         # Create next month's transaction automatically (only for MONTHLY type or if member has active package)
         # Don't create for frozen members
         if not member.is_frozen and member.current_package_id:
-            # Get package details
+            # IMPORTANT: Always fetch fresh package and trainer data to ensure correct pricing
+            # This prevents using cached/old prices if package was changed
             package = Package.query.get(member.current_package_id)
             if package and package.is_active:
                 # Calculate next month's due date (30 days from current due date)
                 next_due_date = transaction.due_date + timedelta(days=30) if transaction.due_date else datetime.utcnow() + timedelta(days=30)
                 
-                # Get trainer fee if trainer is assigned
+                # Get trainer fee if trainer is assigned (fetch fresh data)
                 trainer_fee = 0
                 if member.trainer_id:
                     trainer = TrainerProfile.query.get(member.trainer_id)
                     if trainer:
                         trainer_fee = float(trainer.salary_rate) if trainer.salary_rate else 0
                 
-                # Calculate total amount (package price + trainer fee)
+                # Calculate total amount using CURRENT package price (not old transaction price)
                 package_price = float(package.price) if package.price else 0
                 total_amount = package_price + trainer_fee
                 

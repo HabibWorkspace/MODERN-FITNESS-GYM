@@ -14,7 +14,6 @@ class MemberProfile(db.Model):
     full_name = db.Column(db.String(100), nullable=False, default='')
     phone = db.Column(db.String(20), unique=False, nullable=True, index=True)
     cnic = db.Column(db.String(20), unique=False, nullable=True, index=True)
-    email = db.Column(db.String(100), unique=False, nullable=True, index=True)
     gender = db.Column(db.String(10))
     date_of_birth = db.Column(db.Date)
     admission_date = db.Column(db.Date)
@@ -44,7 +43,6 @@ class MemberProfile(db.Model):
             'full_name': self.full_name,
             'phone': self.phone,
             'cnic': self.cnic,
-            'email': self.email,
             'gender': self.gender,
             'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
             'admission_date': self.admission_date.isoformat() if self.admission_date else None,

@@ -41,6 +41,9 @@ class Transaction(db.Model):
     reversed_at = db.Column(db.DateTime)
     reversed_by = db.Column(db.String(36))
     
+    # Payment description (optional notes)
+    description = db.Column(db.Text)
+    
     def __repr__(self):
         return f'<Transaction {self.transaction_type} {self.amount}>'
     
@@ -62,6 +65,7 @@ class Transaction(db.Model):
             'is_reversed': self.is_reversed,
             'reversed_at': self.reversed_at.isoformat() + 'Z' if self.reversed_at else None,
             'reversed_by': self.reversed_by,
+            'description': self.description,
         }
     
     def can_reverse(self):

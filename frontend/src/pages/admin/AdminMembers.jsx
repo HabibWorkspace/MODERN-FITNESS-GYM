@@ -21,6 +21,8 @@ export default function AdminMembers() {
   const [defaultAdmissionFee, setDefaultAdmissionFee] = useState(0)
   const [deletingMember, setDeletingMember] = useState(null)
   const [confirmFreeze, setConfirmFreeze] = useState(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(null)
+  const [detailsEditMode, setDetailsEditMode] = useState(false)
   const [profileImage, setProfileImage] = useState(null)
   const [profileImagePreview, setProfileImagePreview] = useState(null)
   const [formData, setFormData] = useState({
@@ -1578,11 +1580,11 @@ export default function AdminMembers() {
                         <td className="px-6 py-6">
                           <div className="flex flex-col gap-1.5 items-center">
                             <button
-                              onClick={() => handleEdit(member)}
+                              onClick={() => setShowDetailsModal(member)}
                               className="w-24 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black px-3 py-1.5 rounded transition-all font-semibold text-xs shadow-sm hover:scale-105"
-                              title="Edit member"
+                              title="View details"
                             >
-                              Edit
+                              Details
                             </button>
                             <button
                               onClick={() => handleDelete(member)}
@@ -1603,6 +1605,480 @@ export default function AdminMembers() {
         </div>
 
       </div>
+
+      {/* Member Details Modal */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-fitnix-charcoal border-2 border-fitnix-lime rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-8">
+              {!detailsEditMode ? (
+                // VIEW MODE
+                <>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-fitnix-off-white/20">
+                <div className="flex items-center gap-4">
+                  {showDetailsModal.profile_picture ? (
+                    <img 
+                      src={showDetailsModal.profile_picture} 
+                      alt={showDetailsModal.full_name}
+                      className="w-20 h-20 rounded-full object-cover border-4 border-fitnix-lime shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-fitnix-lime/20 border-4 border-fitnix-lime flex items-center justify-center">
+                      <svg className="w-10 h-10 text-fitnix-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-3xl font-bold text-fitnix-off-white">{showDetailsModal.full_name}</h2>
+                    <p className="text-fitnix-lime font-semibold">Member #{showDetailsModal.member_number}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowDetailsModal(null)}
+                  className="text-fitnix-off-white/60 hover:text-fitnix-off-white transition-colors"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Status Badge */}
+              <div className="mb-6">
+                <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
+                  showDetailsModal.is_frozen
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                    : 'bg-fitnix-lime/20 text-fitnix-lime border border-fitnix-lime/50'
+                }`}>
+                  {showDetailsModal.is_frozen ? '❄️ Frozen' : '✓ Active'}
+                </span>
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Personal Information */}
+                <div className="fitnix-card">
+                  <h3 className="text-xl font-bold text-fitnix-lime mb-4 flex items-center gap-2">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Personal Information
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Full Name</label>
+                      <p className="text-fitnix-off-white font-semibold">{showDetailsModal.full_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Phone</label>
+                      <p className="text-fitnix-off-white font-semibold">{showDetailsModal.phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">CNIC</label>
+                      <p className="text-fitnix-off-white font-semibold">{showDetailsModal.cnic || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Gender</label>
+                      <p className="text-fitnix-off-white font-semibold">{showDetailsModal.gender || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Date of Birth</label>
+                      <p className="text-fitnix-off-white font-semibold">
+                        {showDetailsModal.date_of_birth ? new Date(showDetailsModal.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Membership Information */}
+                <div className="fitnix-card">
+                  <h3 className="text-xl font-bold text-fitnix-lime mb-4 flex items-center gap-2">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    Membership Information
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Admission Date</label>
+                      <p className="text-fitnix-off-white font-semibold">
+                        {showDetailsModal.admission_date ? new Date(showDetailsModal.admission_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Current Package</label>
+                      <p className="text-fitnix-off-white font-semibold">
+                        {(() => {
+                          const pkg = packages.find(p => p.id === showDetailsModal.current_package_id)
+                          return pkg ? pkg.name : 'No Package'
+                        })()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Package Start Date</label>
+                      <p className="text-fitnix-off-white font-semibold">
+                        {showDetailsModal.package_start_date ? new Date(showDetailsModal.package_start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Package Expiry Date</label>
+                      <p className="text-fitnix-off-white font-semibold">
+                        {showDetailsModal.package_expiry_date ? new Date(showDetailsModal.package_expiry_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trainer Information */}
+                <div className="fitnix-card md:col-span-2">
+                  <h3 className="text-xl font-bold text-fitnix-lime mb-4 flex items-center gap-2">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Trainer Information
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-fitnix-off-white/60 text-sm">Assigned Trainer</label>
+                      <p className="text-fitnix-off-white font-semibold">{showDetailsModal.trainer_name || 'No Trainer'}</p>
+                    </div>
+                    {showDetailsModal.trainer_charges > 0 && (
+                      <div>
+                        <label className="text-fitnix-off-white/60 text-sm">Trainer Charges</label>
+                        <p className="text-fitnix-lime font-bold text-lg">Rs. {showDetailsModal.trainer_charges.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => {
+                    // Populate form data and switch to edit mode
+                    setFormData({
+                      full_name: showDetailsModal.full_name || '',
+                      phone: showDetailsModal.phone,
+                      cnic: showDetailsModal.cnic,
+                      gender: showDetailsModal.gender || '',
+                      date_of_birth: showDetailsModal.date_of_birth || '',
+                      admission_date: showDetailsModal.admission_date || new Date().toISOString().split('T')[0],
+                      admission_fee: 0,
+                      waive_admission_fee: false,
+                      discount: 0,
+                      discount_type: 'fixed',
+                      final_payable: 0,
+                      package_id: showDetailsModal.current_package_id || '',
+                      trainer_id: showDetailsModal.trainer_id || '',
+                      package_start_date: showDetailsModal.package_start_date || '',
+                      package_expiry_date: showDetailsModal.package_expiry_date || '',
+                      profile_picture: showDetailsModal.profile_picture || '',
+                    })
+                    setProfileImagePreview(showDetailsModal.profile_picture || null)
+                    setProfileImage(null)
+                    setDetailsEditMode(true)
+                  }}
+                  className="px-8 py-3 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black font-bold rounded-xl transition-all hover:scale-105 shadow-lg uppercase tracking-wide flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Member
+                </button>
+                <button
+                  onClick={() => setShowDetailsModal(null)}
+                  className="px-8 py-3 bg-fitnix-black hover:bg-fitnix-black/80 text-fitnix-off-white font-bold rounded-xl transition-all border-2 border-fitnix-off-white/20 hover:border-fitnix-off-white/40 uppercase tracking-wide"
+                >
+                  Close
+                </button>
+              </div>
+              </>
+              ) : (
+                // EDIT MODE
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-fitnix-off-white/20">
+                    <div>
+                      <h2 className="text-3xl font-bold text-fitnix-off-white">Edit Member</h2>
+                      <p className="text-fitnix-lime font-semibold">Member #{showDetailsModal.member_number}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setDetailsEditMode(false)
+                        setProfileImage(null)
+                        setProfileImagePreview(null)
+                      }}
+                      className="text-fitnix-off-white/60 hover:text-fitnix-off-white transition-colors"
+                    >
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Edit Form */}
+                  <form onSubmit={async (e) => {
+                    e.preventDefault()
+                    setError('')
+                    setSuccess('')
+                    
+                    // Validation
+                    if (!formData.full_name || !formData.phone) {
+                      setError('Full Name and Phone are required')
+                      return
+                    }
+                    
+                    try {
+                      const updateData = {
+                        full_name: formData.full_name,
+                        phone: formData.phone,
+                        cnic: formData.cnic,
+                        gender: formData.gender,
+                        date_of_birth: formData.date_of_birth,
+                        admission_date: formData.admission_date,
+                        package_id: formData.package_id,
+                        trainer_id: formData.trainer_id,
+                        package_start_date: formData.package_start_date,
+                        package_expiry_date: formData.package_expiry_date,
+                      }
+                      
+                      // Add profile picture if changed
+                      if (profileImage) {
+                        updateData.profile_picture = profileImagePreview
+                      }
+                      
+                      await apiClient.put(
+                        `/admin/members/${showDetailsModal.id}?_t=${Date.now()}`, 
+                        updateData,
+                        { 
+                          headers: { 
+                            'Cache-Control': 'no-cache, no-store, must-revalidate', 
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
+                          } 
+                        }
+                      )
+                      setSuccess('Member updated successfully')
+                      setDetailsEditMode(false)
+                      setShowDetailsModal(null)
+                      
+                      // Refresh members list
+                      await new Promise(resolve => setTimeout(resolve, 300))
+                      await fetchMembers()
+                    } catch (err) {
+                      setError(err.response?.data?.error || 'Failed to update member')
+                    }
+                  }}>
+                    {/* Personal Information */}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-fitnix-lime mb-3">Personal Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Full Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter full name"
+                            value={formData.full_name}
+                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                            className="fitnix-input"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Profile Picture
+                          </label>
+                          <div className="flex items-center gap-4">
+                            {profileImagePreview && (
+                              <img 
+                                src={profileImagePreview} 
+                                alt="Profile preview" 
+                                className="w-16 h-16 rounded-full object-cover border-2 border-fitnix-lime"
+                              />
+                            )}
+                            <label className="flex-1 cursor-pointer">
+                              <div className="fitnix-input flex items-center justify-center gap-2 hover:border-fitnix-lime/50 transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-sm">{profileImage ? profileImage.name : 'Choose image'}</span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          <p className="text-xs text-fitnix-off-white/50 mt-1">Max 5MB, JPG/PNG</p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Phone <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="tel"
+                            placeholder="Enter phone number"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            className="fitnix-input"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            CNIC
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter CNIC (e.g., 12345-1234567-1)"
+                            value={formData.cnic}
+                            onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
+                            className="fitnix-input"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Gender
+                          </label>
+                          <select
+                            value={formData.gender}
+                            onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                            className="fitnix-input"
+                          >
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Date of Birth
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.date_of_birth ? formData.date_of_birth.split('T')[0] : ''}
+                            onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                            className="fitnix-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Package & Trainer Assignment */}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-fitnix-lime mb-3">Package & Trainer Assignment</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Package
+                          </label>
+                          <select
+                            value={formData.package_id}
+                            onChange={(e) => setFormData({ ...formData, package_id: e.target.value })}
+                            className="fitnix-input"
+                          >
+                            <option value="">No Package</option>
+                            {packages.filter(pkg => pkg.is_active).map(pkg => (
+                              <option key={pkg.id} value={pkg.id}>
+                                {pkg.name} - Rs. {pkg.price} ({pkg.duration_days} days)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Assigned Trainer
+                          </label>
+                          <select
+                            value={formData.trainer_id}
+                            onChange={(e) => setFormData({ ...formData, trainer_id: e.target.value })}
+                            className="fitnix-input"
+                          >
+                            <option value="">No Trainer</option>
+                            {trainers.map(trainer => (
+                              <option key={trainer.id} value={trainer.id}>
+                                {trainer.full_name} - {trainer.specialization}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Package Dates */}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-fitnix-lime mb-3">Package Dates</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Package Start Date
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.package_start_date ? formData.package_start_date.split('T')[0] : ''}
+                            onChange={(e) => setFormData({ ...formData, package_start_date: e.target.value })}
+                            className="fitnix-input"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-fitnix-off-white/80 mb-2">
+                            Package Expiry Date
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.package_expiry_date ? formData.package_expiry_date.split('T')[0] : ''}
+                            onChange={(e) => setFormData({ ...formData, package_expiry_date: e.target.value })}
+                            className="fitnix-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        type="submit"
+                        className="px-8 py-3 bg-fitnix-lime hover:bg-fitnix-dark-lime text-fitnix-black font-bold rounded-xl transition-all hover:scale-105 shadow-lg uppercase tracking-wide flex items-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Save Changes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailsEditMode(false)
+                          setProfileImage(null)
+                          setProfileImagePreview(null)
+                        }}
+                        className="px-8 py-3 bg-fitnix-black hover:bg-fitnix-black/80 text-fitnix-off-white font-bold rounded-xl transition-all border-2 border-fitnix-off-white/20 hover:border-fitnix-off-white/40 uppercase tracking-wide"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deletingMember && (
