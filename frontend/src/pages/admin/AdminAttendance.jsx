@@ -7,33 +7,23 @@ import {
   Users, 
   UserCheck, 
   Clock, 
-  Zap, 
   Building2, 
   TrendingUp, 
   ClipboardList, 
   CheckCircle2,
   XCircle,
   BarChart3,
-  Timer,
-  ChevronDown,
-  ChevronUp,
-  Search,
-  Calendar
+  Timer
 } from 'lucide-react';
 
 const AdminAttendance = () => {
   const [summary, setSummary] = useState({ today_checkins: 0, members_inside: 0, trainers_inside: 0, avg_stay_today: 0 });
-  const [liveEvents, setLiveEvents] = useState([]);
   const [currentlyInside, setCurrentlyInside] = useState({ members: [], trainers: [] });
-  const [monthlyRecords, setMonthlyRecords] = useState([]);
-  const [monthlyRecordsMonth, setMonthlyRecordsMonth] = useState('');
   const [weeklyData, setWeeklyData] = useState([]);
   const [dailySummary, setDailySummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deviceStatus, setDeviceStatus] = useState({ connected: false, service_running: false });
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [isMonthlyExpanded, setIsMonthlyExpanded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const pusherRef = useRef(null);
   const channelRef = useRef(null);
 
@@ -546,49 +536,20 @@ const AdminAttendance = () => {
     };
   }, []);
 
-  // Refetch monthly records when search query changes
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      if (!loading) {
-        const token = localStorage.getItem('token');
-        fetch(`/api/attendance/analytics/monthly-records?search=${encodeURIComponent(searchQuery)}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              setMonthlyRecords(data.records || []);
-              setMonthlyRecordsMonth(data.month || '');
-            }
-          })
-          .catch(err => console.error(err));
-      }
-    }, 300);
-    
-    return () => clearTimeout(debounceTimer);
-  }, [searchQuery]);
-
   const fetchAllData = async () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const [summaryRes, monthlyRes, liveRes, weeklyRes, dailyRes] = await Promise.all([
+      const [summaryRes, liveRes, weeklyRes, dailyRes] = await Promise.all([
         fetch('/api/attendance/dashboard/summary', { headers }),
-        fetch(`/api/attendance/analytics/monthly-records?search=${encodeURIComponent(searchQuery)}`, { headers }),
         fetch('/api/attendance/live', { headers }),
         fetch('/api/attendance/analytics/weekly', { headers }),
         fetch('/api/attendance/daily-summary', { headers })
       ]);
       if (summaryRes.ok) setSummary(await summaryRes.json());
-      if (monthlyRes.ok) {
-        const data = await monthlyRes.json();
-        setMonthlyRecords(data.records || []);
-        setMonthlyRecordsMonth(data.month || '');
-      }
       if (liveRes.ok) {
         const liveData = await liveRes.json();
         setCurrentlyInside(liveData);
-        setLiveEvents(liveData.recent_events || []);
       }
       if (weeklyRes.ok) setWeeklyData((await weeklyRes.json()).data || []);
       if (dailyRes.ok) setDailySummary((await dailyRes.json()).summaries || []);
@@ -695,51 +656,6 @@ const AdminAttendance = () => {
           ))}
         </div>
 
-        {/* Live Feed - Full Width */}
-        <div className="mb-8">
-          {/* Live Activity Feed */}
-          <div className="fitnix-card-glow">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-2xl font-bold text-fitnix-off-white flex items-center gap-2">
-                <Zap className="w-6 h-6 text-fitnix-lime" strokeWidth={2.5} />
-                Live Activity
-              </h2>
-              <div className="flex items-center space-x-2 bg-fitnix-black px-3 py-1.5 rounded-full border-2 border-fitnix-lime/20">
-                <div className="w-2 h-2 bg-fitnix-lime rounded-full animate-pulse"></div>
-                <span className="text-fitnix-lime text-xs font-bold uppercase tracking-wide">Live</span>
-              </div>
-            </div>
-            <div className="space-y-2 h-[400px] overflow-y-auto custom-scrollbar">
-              {liveEvents.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center">
-                  <Activity className="w-16 h-16 text-fitnix-charcoal mb-3" strokeWidth={2} />
-                  <p className="text-fitnix-off-white/60 font-semibold text-sm">No recent activity</p>
-                </div>
-              ) : (
-                liveEvents.map((event, idx) => (
-                  <div key={`${event.id}-${idx}`} className="p-3 bg-fitnix-charcoal/40 rounded-lg border border-fitnix-lime/10 hover:border-fitnix-lime/30 transition-all duration-200">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold text-fitnix-off-white text-sm">{event.person_name}</p>
-                        <p className="text-xs text-fitnix-lime capitalize font-semibold mt-0.5">{event.person_type} • {event.status}</p>
-                      </div>
-                      {event.status.includes('Check-In') ? (
-                        <CheckCircle2 className="w-4 h-4 text-fitnix-lime" strokeWidth={2.5} />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-orange-400" strokeWidth={2.5} />
-                      )}
-                    </div>
-                    <p className="text-xs text-fitnix-off-white/50 mt-1 flex items-center gap-1 font-medium">
-                      <Clock className="w-3 h-3" strokeWidth={2} />
-                      {convertToPKT(event.timestamp)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Today's Summary Table - Simplified */}
         <div className="fitnix-card-glow mb-8">
           <h2 className="text-2xl font-bold text-fitnix-off-white mb-5 flex items-center gap-2">
@@ -753,10 +669,8 @@ const AdminAttendance = () => {
                   <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Name</th>
                   <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Type</th>
                   <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Status</th>
-                  <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">First Check-In</th>
-                  <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Last Check-Out</th>
-                  <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Total Time</th>
-                  <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Visits</th>
+                  <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Check-In</th>
+                  <th className="px-4 py-4 text-left text-fitnix-lime font-bold uppercase tracking-wide text-xs">Payment Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -780,14 +694,22 @@ const AdminAttendance = () => {
                         </span>
                       </td>
                       <td className="px-4 py-4 text-fitnix-off-white/70 font-medium">{record.first_check_in ? convertToPKT(record.first_check_in) : '-'}</td>
-                      <td className="px-4 py-4 text-fitnix-off-white/70 font-medium">{record.last_check_out ? convertToPKT(record.last_check_out) : '-'}</td>
-                      <td className="px-4 py-4 text-fitnix-off-white/70 font-medium">{record.total_time_minutes ? `${Math.floor(record.total_time_minutes / 60)}h ${record.total_time_minutes % 60}m` : '-'}</td>
-                      <td className="px-4 py-4 text-fitnix-lime font-bold text-lg">{record.visit_count}</td>
+                      <td className="px-4 py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 w-fit border ${
+                          record.payment_status === 'COMPLETED' || record.payment_status === 'Paid'
+                            ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                            : record.payment_status === 'PENDING'
+                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                            : 'bg-red-500/20 text-red-400 border-red-500/30'
+                        }`}>
+                          {record.payment_status || 'N/A'}
+                        </span>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-4 py-16 text-center">
+                    <td colSpan="5" className="px-4 py-16 text-center">
                       <ClipboardList className="w-16 h-16 text-fitnix-charcoal mx-auto mb-4" strokeWidth={2} />
                       <p className="text-fitnix-off-white/60 text-base font-semibold">No attendance records for today</p>
                     </td>
@@ -828,90 +750,6 @@ const AdminAttendance = () => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Monthly Attendance Records - Simplified */}
-        <div className="fitnix-card-glow">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-7 h-7 text-purple-400" strokeWidth={2.5} />
-              <div>
-                <h2 className="text-2xl font-bold text-fitnix-off-white">Monthly Attendance Records</h2>
-                <p className="text-fitnix-off-white/60 text-sm font-medium mt-0.5">{monthlyRecordsMonth}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsMonthlyExpanded(!isMonthlyExpanded)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg border border-purple-500/30 hover:border-purple-500/50 transition-all font-bold"
-            >
-              {isMonthlyExpanded ? (
-                <>
-                  <ChevronUp className="w-5 h-5" strokeWidth={2.5} />
-                  Collapse
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="w-5 h-5" strokeWidth={2.5} />
-                  Expand
-                </>
-              )}
-            </button>
-          </div>
-
-          {isMonthlyExpanded && (
-            <>
-              {/* Search Bar */}
-              <div className="mb-5">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-fitnix-off-white/50" strokeWidth={2} />
-                  <input
-                    type="text"
-                    placeholder="Search by name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-fitnix-charcoal/60 border-2 border-fitnix-charcoal focus:border-purple-500/50 rounded-lg text-fitnix-off-white placeholder-fitnix-off-white/50 font-medium focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Table */}
-              <div className="overflow-x-auto rounded-lg max-h-[600px] overflow-y-auto custom-scrollbar">
-                <table className="w-full text-sm">
-                  <thead className="bg-fitnix-charcoal/60 border-b-2 border-purple-500/30 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-4 py-4 text-left text-purple-400 font-bold uppercase tracking-wide text-xs">Name</th>
-                      <th className="px-4 py-4 text-left text-purple-400 font-bold uppercase tracking-wide text-xs">Type</th>
-                      <th className="px-4 py-4 text-left text-purple-400 font-bold uppercase tracking-wide text-xs">Total Visits</th>
-                      <th className="px-4 py-4 text-left text-purple-400 font-bold uppercase tracking-wide text-xs">Days Attended</th>
-                      <th className="px-4 py-4 text-left text-purple-400 font-bold uppercase tracking-wide text-xs">Total Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthlyRecords && monthlyRecords.length > 0 ? (
-                      monthlyRecords.map((record, idx) => (
-                        <tr key={`${record.person_id}-${idx}`} className="border-b border-fitnix-charcoal hover:bg-fitnix-charcoal/40 transition-colors">
-                          <td className="px-4 py-4 text-fitnix-off-white font-bold text-sm">{record.person_name}</td>
-                          <td className="px-4 py-4 text-fitnix-off-white/70 capitalize font-medium">{record.person_type}</td>
-                          <td className="px-4 py-4 text-purple-400 font-bold text-lg">{record.total_visits}</td>
-                          <td className="px-4 py-4 text-fitnix-lime font-bold text-lg">{record.days_attended}</td>
-                          <td className="px-4 py-4 text-fitnix-off-white/70 font-medium">{record.total_time_formatted}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="px-4 py-16 text-center">
-                          <Calendar className="w-16 h-16 text-fitnix-charcoal mx-auto mb-4" strokeWidth={2} />
-                          <p className="text-fitnix-off-white/60 text-base font-semibold">
-                            {searchQuery ? 'No matching records found' : 'No attendance records for this month'}
-                          </p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
         </div>
       </div>
     </div>
