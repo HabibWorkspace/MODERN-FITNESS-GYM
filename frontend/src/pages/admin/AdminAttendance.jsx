@@ -438,10 +438,22 @@ const AdminAttendance = () => {
     // Initialize Pusher for real-time updates
     const initPusher = () => {
       try {
-        // Initialize Pusher client
+        // Initialize Pusher client with fallback transports for PythonAnywhere
         pusherRef.current = new Pusher('8f96a097d2f6d11c1a34', {
           cluster: 'mt1',
-          encrypted: true
+          encrypted: true,
+          forceTLS: true,
+          // Enable fallback transports for environments with WebSocket restrictions
+          enabledTransports: ['ws', 'wss'],
+          disabledTransports: [],
+          // Connection timeout and retry settings
+          activityTimeout: 120000, // 2 minutes
+          pongTimeout: 30000, // 30 seconds
+          unavailableTimeout: 10000, // 10 seconds
+          // Enable stats for debugging
+          enableStats: false,
+          // Disable auth endpoint (we're using public channel)
+          authEndpoint: null
         });
 
         // Subscribe to attendance updates channel
@@ -449,15 +461,36 @@ const AdminAttendance = () => {
 
         // Connection state handlers
         pusherRef.current.connection.bind('connected', () => {
-          console.log('✓ Pusher connected');
+          console.log('✓ Pusher connected successfully');
+          console.log('Connection state:', pusherRef.current.connection.state);
         });
 
         pusherRef.current.connection.bind('disconnected', () => {
           console.log('✗ Pusher disconnected');
+          console.log('Connection state:', pusherRef.current.connection.state);
+        });
+
+        pusherRef.current.connection.bind('unavailable', () => {
+          console.error('✗ Pusher unavailable - WebSocket connection failed');
+          console.log('This may be due to network restrictions or firewall blocking WebSockets');
+        });
+
+        pusherRef.current.connection.bind('failed', () => {
+          console.error('✗ Pusher connection failed permanently');
         });
 
         pusherRef.current.connection.bind('error', (err) => {
           console.error('Pusher connection error:', err);
+          console.log('Error details:', JSON.stringify(err, null, 2));
+        });
+
+        // Channel subscription handlers
+        channelRef.current.bind('pusher:subscription_succeeded', () => {
+          console.log('✓ Successfully subscribed to attendance-updates channel');
+        });
+
+        channelRef.current.bind('pusher:subscription_error', (err) => {
+          console.error('✗ Failed to subscribe to attendance-updates channel:', err);
         });
 
         // Listen for check-in events
