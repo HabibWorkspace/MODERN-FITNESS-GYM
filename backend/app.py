@@ -140,7 +140,7 @@ def create_app(config=None):
         if app.config.get('ENV') == 'production':
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         # Content Security Policy - Allow CDN resources and Pusher WebSockets
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.pusher.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' ws: wss: https://sockjs-mt1.pusher.com wss://ws-mt1.pusher.com https://*.pusher.com"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.pusher.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' ws: wss: https://cdn.jsdelivr.net https://sockjs-mt1.pusher.com wss://ws-mt1.pusher.com https://*.pusher.com"
         # Referrer policy
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         # Permissions policy
