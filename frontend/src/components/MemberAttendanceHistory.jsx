@@ -27,7 +27,8 @@ const MemberAttendanceHistory = ({ memberId }) => {
           person_id: memberId,
           person_type: 'member',
           start_date: startDate.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0]
+          end_date: endDate.toISOString().split('T')[0],
+          per_page: 1000 // Get all records for stats
         }
       });
       
@@ -36,14 +37,44 @@ const MemberAttendanceHistory = ({ memberId }) => {
         setAttendance(records);
         
         // Calculate stats
-        const totalVisits = records.length;
-        const totalMinutes = records.reduce((sum, r) => sum + (r.stay_duration || 0), 0);
-        const avgMinutes = totalVisits > 0 ? Math.round(totalMinutes / totalVisits) : 0;
+        const totalCheckIns = records.length;
+        
+        // Count unique days attended
+        const uniqueDays = new Set(
+          records.map(r => new Date(r.check_in_time).toDateString())
+        );
+        const daysAttended = uniqueDays.size;
+        
+        // Calculate attendance rate (days attended / total days in period)
+        const totalDays = parseInt(timeRange);
+        const attendanceRate = totalDays > 0 ? Math.round((daysAttended / totalDays) * 100) : 0;
+        
+        // Calculate monthly breakdown for last 12 months
+        const monthlyData = {};
+        const now = new Date();
+        
+        // Initialize last 12 months
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          monthlyData[key] = { month: monthName, count: 0 };
+        }
+        
+        // Count check-ins per month
+        records.forEach(r => {
+          const date = new Date(r.check_in_time);
+          const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          if (monthlyData[key]) {
+            monthlyData[key].count++;
+          }
+        });
         
         setStats({
-          totalVisits,
-          totalHours: Math.floor(totalMinutes / 60),
-          avgStay: `${Math.floor(avgMinutes / 60)}h ${avgMinutes % 60}m`
+          totalCheckIns,
+          daysAttended,
+          attendanceRate,
+          monthlyBreakdown: Object.values(monthlyData)
         });
       }
       
@@ -112,29 +143,47 @@ const MemberAttendanceHistory = ({ memberId }) => {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-4 h-4 text-fitnix-lime" />
-              <span className="text-xs text-fitnix-off-white/60 font-semibold">Total Visits</span>
+        <>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-fitnix-lime" />
+                <span className="text-xs text-fitnix-off-white/60 font-semibold">Total Check-ins</span>
+              </div>
+              <p className="text-3xl font-bold text-fitnix-lime">{stats.totalCheckIns}</p>
             </div>
-            <p className="text-2xl font-bold text-fitnix-lime">{stats.totalVisits}</p>
-          </div>
-          <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-fitnix-lime" />
-              <span className="text-xs text-fitnix-off-white/60 font-semibold">Total Hours</span>
+            <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-fitnix-lime" />
+                <span className="text-xs text-fitnix-off-white/60 font-semibold">Days Attended</span>
+              </div>
+              <p className="text-3xl font-bold text-fitnix-lime">{stats.daysAttended}</p>
             </div>
-            <p className="text-2xl font-bold text-fitnix-lime">{stats.totalHours}h</p>
+            <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-fitnix-lime" />
+                <span className="text-xs text-fitnix-off-white/60 font-semibold">Attendance Rate</span>
+              </div>
+              <p className="text-3xl font-bold text-fitnix-lime">{stats.attendanceRate}%</p>
+            </div>
           </div>
-          <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20">
-            <div className="flex items-center gap-2 mb-2">
+
+          {/* Monthly Breakdown */}
+          <div className="bg-fitnix-black/40 rounded-lg p-4 border border-fitnix-lime/20 mb-6">
+            <h4 className="text-sm font-bold text-fitnix-off-white mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-fitnix-lime" />
-              <span className="text-xs text-fitnix-off-white/60 font-semibold">Avg Stay</span>
+              Monthly Breakdown (Last 12 Months)
+            </h4>
+            <div className="grid grid-cols-6 gap-3">
+              {stats.monthlyBreakdown.map((month, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="text-xs text-fitnix-off-white/60 mb-1 font-semibold">{month.month}</div>
+                  <div className="text-2xl font-bold text-fitnix-lime">{month.count}</div>
+                </div>
+              ))}
             </div>
-            <p className="text-2xl font-bold text-fitnix-lime">{stats.avgStay}</p>
           </div>
-        </div>
+        </>
       )}
 
       {/* Attendance Records Table */}
@@ -144,9 +193,7 @@ const MemberAttendanceHistory = ({ memberId }) => {
             <thead className="bg-fitnix-black/60 sticky top-0">
               <tr>
                 <th className="px-4 py-3 text-left text-fitnix-lime font-bold text-xs uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-fitnix-lime font-bold text-xs uppercase">Check-In</th>
-                <th className="px-4 py-3 text-left text-fitnix-lime font-bold text-xs uppercase">Check-Out</th>
-                <th className="px-4 py-3 text-left text-fitnix-lime font-bold text-xs uppercase">Duration</th>
+                <th className="px-4 py-3 text-left text-fitnix-lime font-bold text-xs uppercase">Check-In Time</th>
               </tr>
             </thead>
             <tbody>
@@ -160,16 +207,8 @@ const MemberAttendanceHistory = ({ memberId }) => {
                   <td className="px-4 py-3 text-fitnix-off-white font-semibold">
                     {formatDate(record.check_in_time)}
                   </td>
-                  <td className="px-4 py-3 text-fitnix-off-white/70">
-                    {formatTime(record.check_in_time)}
-                  </td>
-                  <td className="px-4 py-3 text-fitnix-off-white/70">
-                    {record.check_out_time ? formatTime(record.check_out_time) : (
-                      <span className="text-fitnix-lime font-semibold">Still Inside</span>
-                    )}
-                  </td>
                   <td className="px-4 py-3 text-fitnix-lime font-bold">
-                    {formatDuration(record.stay_duration)}
+                    {formatTime(record.check_in_time)}
                   </td>
                 </tr>
               ))}
