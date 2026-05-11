@@ -67,13 +67,14 @@ def sync_log_from_local():
             person = TrainerProfile.query.get(mapping.person_id)
             person_name = person.full_name if person and person.full_name else None
         
-        # Create new attendance record
+        # Create new attendance record (device_serial is optional, default to "ANDROID_SYNC")
         record = AttendanceRecord(
             person_id=mapping.person_id,
             person_type=mapping.person_type,
             person_name=person_name,
             check_in_time=timestamp,
-            device_user_id=device_user_id
+            device_user_id=device_user_id,
+            device_serial=device_serial or "ANDROID_SYNC"  # Default if not provided
         )
         
         db.session.add(record)
@@ -566,7 +567,15 @@ def health_check():
         attendance_service = current_app.config.get('attendance_service')
         device_client = current_app.config.get('biometric_device_client')
         
-        # Safely check device connection
+        # Check if we have recent syncs from Android (last 30 seconds)
+        recent_sync = db.session.query(AttendanceRecord).filter(
+            AttendanceRecord.created_at >= datetime.utcnow() - timedelta(seconds=30)
+        ).first()
+        
+        # If we have recent syncs, consider device as connected (Android sync is working)
+        android_sync_active = recent_sync is not None
+        
+        # Safely check device connection (for local PC sync)
         is_connected = False
         if device_client:
             try:
@@ -574,6 +583,9 @@ def health_check():
             except Exception as e:
                 current_app.logger.error(f"Error checking device connection: {e}")
                 is_connected = False
+        
+        # Device is considered connected if either local service OR Android sync is active
+        device_connected = is_connected or android_sync_active
         
         # Safely check service running status
         is_running = False
@@ -587,11 +599,16 @@ def health_check():
                 current_app.logger.error(f"Error checking service status: {e}")
                 is_running = False
         
+        # If Android sync is active, use the most recent record's timestamp
+        if android_sync_active and recent_sync:
+            last_sync = recent_sync.created_at.isoformat()
+        
         return jsonify({
             'success': True, 
-            'service_running': is_running, 
-            'device_connected': is_connected, 
-            'last_sync': last_sync
+            'service_running': is_running or android_sync_active,  # Either local or Android
+            'device_connected': device_connected, 
+            'last_sync': last_sync,
+            'sync_method': 'android' if android_sync_active else ('local' if is_running else 'none')
         }), 200
     except Exception as e:
         current_app.logger.error(f"Health check error: {str(e)}", exc_info=True)

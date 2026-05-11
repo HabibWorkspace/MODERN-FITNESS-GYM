@@ -1,0 +1,77 @@
+================================================================================
+YOUR iFACE950 DEVICE CONFIGURATION
+================================================================================
+
+Device IP Address: 192.168.0.201
+TCP Comm Port: 4370
+Server Port: 8081 (not used in our setup)
+
+================================================================================
+UPDATED .env FILE FOR ANDROID DEVICE
+================================================================================
+
+Copy this EXACT configuration to your Android device:
+
+PYTHONANYWHERE_URL=https://habibworkspace.pythonanywhere.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin22@@
+BIOMETRIC_DEVICE_IP=192.168.0.201
+BIOMETRIC_DEVICE_PORT=4270
+SYNC_INTERVAL=3
+PUSHER_APP_ID=2142303
+PUSHER_KEY=8f96a097d2f6d11c1a34
+PUSHER_SECRET=97a957c4a520fe63a10e
+PUSHER_CLUSTER=mt1
+
+================================================================================
+HOW TO USE THIS ON ANDROID (in Termux):
+================================================================================
+
+1. Create/update .env file:
+   cd ~/downloads
+   nano .env
+
+2. Copy-paste the configuration above
+
+3. Save: Ctrl+X, then Y, then Enter
+
+4. Test connection:
+   ping 192.168.0.201
+
+5. Run sync:
+   python android_device_sync.py
+
+================================================================================
+QUICK ONE-COMMAND SETUP:
+================================================================================
+
+cd ~/downloads && cat > .env << 'EOF'
+PYTHONANYWHERE_URL=https://habibworkspace.pythonanywhere.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin22@@
+BIOMETRIC_DEVICE_IP=192.168.0.201
+BIOMETRIC_DEVICE_PORT=4370
+SYNC_INTERVAL=3
+PUSHER_APP_ID=2142303
+PUSHER_KEY=8f96a097d2f6d11c1a34
+PUSHER_SECRET=97a957c4a520fe63a10e
+PUSHER_CLUSTER=mt1
+EOF
+
+Then run:
+python android_device_sync.py
+
+================================================================================
+NOTES:
+================================================================================
+
+✅ Device IP: 192.168.0.201
+✅ Device Port: 4270 (NOT the standard 4370!)
+✅ Server Port 8081: Not needed for our setup (we connect directly to device)
+
+The Android device will connect to your iFace950 at:
+192.168.0.201:4270
+
+Then sync data to PythonAnywhere via internet.
+
+================================================================================

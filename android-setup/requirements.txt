@@ -1,0 +1,6 @@
+# Python packages required for Android Device Sync
+# Install with: pip install -r requirements.txt
+
+pyzk>=0.9
+requests>=2.31.0
+python-dotenv>=1.0.0

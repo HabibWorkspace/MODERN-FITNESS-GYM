@@ -1,0 +1,67 @@
+================================================================================
+CORRECT CONFIGURATION - USE THIS!
+================================================================================
+
+Device IP: 192.168.0.201
+Device Port: 4370 (CORRECT - Standard ZKTeco port)
+
+================================================================================
+UPDATED .env FILE FOR ANDROID
+================================================================================
+
+Use this EXACT configuration:
+
+PYTHONANYWHERE_URL=https://habibworkspace.pythonanywhere.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin22@@
+BIOMETRIC_DEVICE_IP=192.168.0.201
+BIOMETRIC_DEVICE_PORT=4370
+SYNC_INTERVAL=5
+PUSHER_APP_ID=2142303
+PUSHER_KEY=8f96a097d2f6d11c1a34
+PUSHER_SECRET=97a957c4a520fe63a10e
+PUSHER_CLUSTER=mt1
+
+================================================================================
+QUICK SETUP ON ANDROID (in Termux):
+================================================================================
+
+cd ~/downloads && cat > .env << 'EOF'
+PYTHONANYWHERE_URL=https://habibworkspace.pythonanywhere.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin22@@
+BIOMETRIC_DEVICE_IP=192.168.0.201
+BIOMETRIC_DEVICE_PORT=4370
+SYNC_INTERVAL=5
+PUSHER_APP_ID=2142303
+PUSHER_KEY=8f96a097d2f6d11c1a34
+PUSHER_SECRET=97a957c4a520fe63a10e
+PUSHER_CLUSTER=mt1
+EOF
+
+================================================================================
+TEST CONNECTION:
+================================================================================
+
+# Test if device is reachable
+ping 192.168.0.201
+
+# Test if port is correct
+python test_connection.py
+
+# Run sync
+python android_device_sync_simple.py
+
+================================================================================
+IMPORTANT NOTES:
+================================================================================
+
+✅ Port 4370 is the STANDARD ZKTeco port
+✅ This is what most iFace devices use by default
+✅ Make sure Android is on same WiFi as device
+✅ IP: 192.168.0.201
+✅ Port: 4370
+
+The timeout error was likely because of the WRONG PORT (4270 instead of 4370)!
+
+================================================================================
