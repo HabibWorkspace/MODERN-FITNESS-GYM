@@ -51,6 +51,34 @@ class SimpleAndroidSync:
         self.synced_records = set()  # Track synced records by timestamp+user_id
         self.sync_count = 0
         self.error_count = 0
+        self.last_heartbeat = 0  # Track last heartbeat time
+        
+    def send_heartbeat(self):
+        """Send heartbeat to server to indicate sync script is alive."""
+        try:
+            # Only send heartbeat every 30 seconds
+            current_time = time.time()
+            if current_time - self.last_heartbeat < 30:
+                return
+            
+            headers = {'Content-Type': 'application/json'}
+            payload = {'device_ip': DEVICE_IP}
+            
+            response = requests.post(
+                f'{PYTHONANYWHERE_URL}/api/attendance/heartbeat',
+                json=payload,
+                headers=headers,
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                self.last_heartbeat = current_time
+                logger.debug("✓ Heartbeat sent")
+            else:
+                logger.warning(f"⚠ Heartbeat failed: {response.status_code}")
+                
+        except Exception as e:
+            logger.debug(f"Heartbeat error: {e}")
         
     def authenticate(self):
         """Get JWT token from PythonAnywhere backend."""
@@ -194,6 +222,9 @@ class SimpleAndroidSync:
             while True:
                 cycle_count += 1
                 logger.info(f"--- Cycle {cycle_count} ---")
+                
+                # Send heartbeat to indicate we're alive
+                self.send_heartbeat()
                 
                 self.fetch_and_sync()
                 

@@ -615,6 +615,29 @@ def test_pusher():
         current_app.logger.error(f"Error testing Pusher: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@attendance_bp.route('/heartbeat', methods=['POST'])
+def sync_heartbeat():
+    """Heartbeat endpoint for Android sync script to report it's alive."""
+    try:
+        # Store heartbeat timestamp in app config (in-memory)
+        current_app.config['android_sync_last_heartbeat'] = datetime.utcnow()
+        
+        # Optional: Get sync script info
+        data = request.get_json() or {}
+        device_ip = data.get('device_ip', 'unknown')
+        
+        current_app.logger.debug(f"Android sync heartbeat received from device: {device_ip}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Heartbeat received',
+            'server_time': datetime.utcnow().isoformat()
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error processing heartbeat: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @attendance_bp.route('/health', methods=['GET'])
 @jwt_required()
 def health_check():
@@ -623,13 +646,21 @@ def health_check():
         device_client = current_app.config.get('biometric_device_client')
         pusher_service = current_app.config.get('pusher_service')
         
-        # Check if we have recent syncs from Android (last 30 seconds)
+        # Check if we have recent syncs from Android (last 5 minutes)
         recent_sync = db.session.query(AttendanceRecord).filter(
-            AttendanceRecord.created_at >= datetime.utcnow() - timedelta(seconds=30)
+            AttendanceRecord.created_at >= datetime.utcnow() - timedelta(minutes=5)
         ).first()
         
-        # If we have recent syncs, consider device as connected (Android sync is working)
-        android_sync_active = recent_sync is not None
+        # Check for Android sync heartbeat (last 60 seconds)
+        last_heartbeat = current_app.config.get('android_sync_last_heartbeat')
+        android_sync_active = False
+        if last_heartbeat:
+            time_since_heartbeat = (datetime.utcnow() - last_heartbeat).total_seconds()
+            android_sync_active = time_since_heartbeat < 60  # Active if heartbeat within last 60 seconds
+        
+        # If no heartbeat but recent sync, also consider active
+        if not android_sync_active and recent_sync:
+            android_sync_active = True
         
         # Safely check device connection (for local PC sync)
         is_connected = False
