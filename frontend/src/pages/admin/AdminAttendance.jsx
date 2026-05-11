@@ -675,13 +675,10 @@ const AdminAttendance = () => {
           </div>
         </div>
 
-        {/* Stats Cards - Simplified */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Cards - Only Today's Check-ins */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
           {[
-            { label: "Today's Check-ins", value: summary.today_checkins, Icon: BarChart3, gradient: "from-blue-500 to-cyan-500" },
-            { label: "Members Inside", value: summary.members_inside, Icon: Users, gradient: "from-fitnix-lime to-green-400" },
-            { label: "Trainers Inside", value: summary.trainers_inside, Icon: UserCheck, gradient: "from-purple-500 to-pink-500" },
-            { label: "Avg Stay Today", value: summary.avg_stay_formatted || '0h 0m', Icon: Timer, gradient: "from-orange-500 to-red-500" }
+            { label: "Today's Check-ins", value: summary.today_checkins, Icon: BarChart3, gradient: "from-blue-500 to-cyan-500" }
           ].map((stat, idx) => (
             <div key={idx} className="group relative">
               <div className={`absolute -inset-0.5 bg-gradient-to-r ${stat.gradient} rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-300`}></div>
@@ -698,8 +695,8 @@ const AdminAttendance = () => {
           ))}
         </div>
 
-        {/* Live Feed & Currently Inside - Simplified */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Live Feed - Full Width */}
+        <div className="mb-8">
           {/* Live Activity Feed */}
           <div className="fitnix-card-glow">
             <div className="flex items-center justify-between mb-5">
@@ -739,72 +736,6 @@ const AdminAttendance = () => {
                   </div>
                 ))
               )}
-            </div>
-          </div>
-
-          {/* Currently Inside */}
-          <div className="fitnix-card-glow">
-            <h2 className="text-2xl font-bold text-fitnix-off-white mb-5 flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-purple-400" strokeWidth={2.5} />
-              Currently Inside
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-fitnix-lime text-base flex items-center gap-2">
-                    <Users className="w-5 h-5" strokeWidth={2.5} />
-                    Members
-                  </h3>
-                  <span className="px-3 py-1 bg-fitnix-lime/20 text-fitnix-lime text-sm font-bold rounded-full border border-fitnix-lime/30">
-                    {currentlyInside.members?.length || 0}
-                  </span>
-                </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                  {currentlyInside.members && currentlyInside.members.length > 0 ? (
-                    currentlyInside.members.map(m => (
-                      <div key={m.id} className="p-3 bg-fitnix-charcoal/40 rounded-lg hover:bg-fitnix-charcoal/60 transition-colors border border-fitnix-charcoal hover:border-fitnix-lime/20">
-                        <div className="flex justify-between items-center">
-                          <p className="font-bold text-fitnix-off-white text-sm">{m.person_name || m.person_id}</p>
-                          <span className="text-xs text-fitnix-lime font-bold flex items-center gap-1">
-                            <Clock className="w-3 h-3" strokeWidth={2} />
-                            {m.time_spent_formatted || `${m.time_spent_so_far} min`}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-fitnix-off-white/60 text-center py-3 font-medium">No members inside</p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-purple-400 text-base flex items-center gap-2">
-                    <UserCheck className="w-5 h-5" strokeWidth={2.5} />
-                    Trainers
-                  </h3>
-                  <span className="px-3 py-1 bg-purple-500/20 text-purple-400 text-sm font-bold rounded-full border border-purple-500/30">
-                    {currentlyInside.trainers?.length || 0}
-                  </span>
-                </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                  {currentlyInside.trainers && currentlyInside.trainers.length > 0 ? (
-                    currentlyInside.trainers.map(t => (
-                      <div key={t.id} className="p-3 bg-fitnix-charcoal/40 rounded-lg hover:bg-fitnix-charcoal/60 transition-colors border border-fitnix-charcoal hover:border-purple-500/20">
-                        <div className="flex justify-between items-center">
-                          <p className="font-bold text-fitnix-off-white text-sm">{t.person_name || t.person_id}</p>
-                          <span className="text-xs text-purple-400 font-bold flex items-center gap-1">
-                            <Clock className="w-3 h-3" strokeWidth={2} />
-                            {t.time_spent_formatted || `${t.time_spent_so_far} min`}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-fitnix-off-white/60 text-center py-3 font-medium">No trainers inside</p>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </div>

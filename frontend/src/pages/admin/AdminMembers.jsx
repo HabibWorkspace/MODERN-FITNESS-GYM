@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import apiClient from '../../services/api'
 import AdminLayout from '../../components/layouts/AdminLayout'
+import MemberAttendanceHistory from '../../components/MemberAttendanceHistory'
 import logo from '/fitcore-logo.png'
 
 export default function AdminMembers() {
@@ -1752,6 +1753,17 @@ export default function AdminMembers() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Attendance History Section */}
+              <div className="fitnix-card mb-6">
+                <h3 className="text-xl font-bold text-fitnix-lime mb-4 flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Attendance History
+                </h3>
+                <MemberAttendanceHistory memberId={showDetailsModal.id} />
               </div>
 
               {/* Action Buttons */}

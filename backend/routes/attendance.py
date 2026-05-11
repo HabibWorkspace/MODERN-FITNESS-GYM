@@ -178,6 +178,8 @@ def get_attendance_history():
             query = query.filter(func.date(AttendanceRecord.check_in_time) <= datetime.fromisoformat(request.args.get('end_date')).date())
         if request.args.get('person_type'):
             query = query.filter(AttendanceRecord.person_type == request.args.get('person_type'))
+        if request.args.get('person_id'):
+            query = query.filter(AttendanceRecord.person_id == request.args.get('person_id'))
         paginated = query.order_by(AttendanceRecord.check_in_time.desc()).paginate(page=page, per_page=per_page, error_out=False)
         
         # Enrich records with person names if missing
