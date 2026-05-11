@@ -84,6 +84,11 @@ def sync_log_from_local():
         
         # Trigger Pusher event for real-time notification
         pusher_service = current_app.config.get('pusher_service')
+        current_app.logger.info(f"Pusher service retrieved: {pusher_service is not None}")
+        
+        if pusher_service:
+            current_app.logger.info(f"Pusher enabled: {pusher_service.is_enabled()}")
+            
         if pusher_service and pusher_service.is_enabled():
             try:
                 # Fetch additional member details for richer notifications
@@ -134,8 +139,11 @@ def sync_log_from_local():
                                 pusher_data['package_duration_days'] = package.duration_days
                 
                 pusher_service.trigger_check_in(pusher_data)
+                current_app.logger.info(f"✓ Pusher check-in event triggered for {person_name}")
             except Exception as e:
                 current_app.logger.error(f"Failed to trigger Pusher event: {e}")
+        else:
+            current_app.logger.warning(f"Pusher not available - service: {pusher_service is not None}, enabled: {pusher_service.is_enabled() if pusher_service else False}")
         
         return jsonify({'success': True, 'id': record.id}), 201
         
@@ -560,12 +568,60 @@ def delete_mapping(mapping_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@attendance_bp.route('/test-pusher', methods=['POST'])
+@jwt_required()
+def test_pusher():
+    """Test endpoint to manually trigger a Pusher event."""
+    try:
+        pusher_service = current_app.config.get('pusher_service')
+        
+        if not pusher_service:
+            return jsonify({
+                'success': False,
+                'error': 'Pusher service not initialized'
+            }), 503
+        
+        if not pusher_service.is_enabled():
+            return jsonify({
+                'success': False,
+                'error': 'Pusher service not enabled (check credentials)'
+            }), 503
+        
+        # Create test data
+        test_data = {
+            'id': 'test-123',
+            'person_id': 'test-person',
+            'person_name': 'Test User',
+            'person_type': 'member',
+            'check_in_time': datetime.utcnow().isoformat(),
+            'timestamp': datetime.utcnow().isoformat(),
+            'member_number': '999',
+            'package_name': 'Test Package',
+            'days_until_expiry': 30,
+            'package_status': 'active'
+        }
+        
+        # Trigger test event
+        success = pusher_service.trigger_check_in(test_data)
+        
+        return jsonify({
+            'success': success,
+            'message': 'Test Pusher event triggered' if success else 'Failed to trigger Pusher event',
+            'pusher_enabled': pusher_service.is_enabled(),
+            'test_data': test_data
+        }), 200 if success else 500
+        
+    except Exception as e:
+        current_app.logger.error(f"Error testing Pusher: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @attendance_bp.route('/health', methods=['GET'])
 @jwt_required()
 def health_check():
     try:
         attendance_service = current_app.config.get('attendance_service')
         device_client = current_app.config.get('biometric_device_client')
+        pusher_service = current_app.config.get('pusher_service')
         
         # Check if we have recent syncs from Android (last 30 seconds)
         recent_sync = db.session.query(AttendanceRecord).filter(
@@ -599,6 +655,13 @@ def health_check():
                 current_app.logger.error(f"Error checking service status: {e}")
                 is_running = False
         
+        # Check Pusher status
+        pusher_enabled = False
+        pusher_configured = False
+        if pusher_service:
+            pusher_enabled = pusher_service.is_enabled()
+            pusher_configured = True
+        
         # If Android sync is active, use the most recent record's timestamp
         if android_sync_active and recent_sync:
             last_sync = recent_sync.created_at.isoformat()
@@ -608,7 +671,9 @@ def health_check():
             'service_running': is_running or android_sync_active,  # Either local or Android
             'device_connected': device_connected, 
             'last_sync': last_sync,
-            'sync_method': 'android' if android_sync_active else ('local' if is_running else 'none')
+            'sync_method': 'android' if android_sync_active else ('local' if is_running else 'none'),
+            'pusher_configured': pusher_configured,
+            'pusher_enabled': pusher_enabled
         }), 200
     except Exception as e:
         current_app.logger.error(f"Health check error: {str(e)}", exc_info=True)

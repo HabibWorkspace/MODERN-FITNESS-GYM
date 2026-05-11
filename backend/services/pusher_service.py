@@ -50,15 +50,20 @@ class PusherService:
             True if successful, False otherwise
         """
         if not self.enabled or not self.client:
-            logger.debug(f"Pusher disabled - skipping event: {channel}/{event}")
+            logger.warning(f"Pusher disabled - skipping event: {channel}/{event}")
             return False
         
         try:
-            self.client.trigger(channel, event, data)
-            logger.info(f"Pusher event triggered: {channel}/{event}")
+            logger.info(f"Attempting to trigger Pusher event: {channel}/{event}")
+            logger.debug(f"Pusher data: {data}")
+            
+            response = self.client.trigger(channel, event, data)
+            
+            logger.info(f"✓ Pusher event triggered successfully: {channel}/{event}")
+            logger.debug(f"Pusher response: {response}")
             return True
         except Exception as e:
-            logger.error(f"Failed to trigger Pusher event {channel}/{event}: {e}")
+            logger.error(f"✗ Failed to trigger Pusher event {channel}/{event}: {e}", exc_info=True)
             return False
     
     def trigger_check_in(self, person_data: Dict[str, Any]) -> bool:
