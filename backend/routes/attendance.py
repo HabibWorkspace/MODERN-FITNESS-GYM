@@ -107,7 +107,8 @@ def sync_log_from_local():
                     if member:
                         pusher_data['member_number'] = member.member_number
                         pusher_data['phone'] = member.phone
-                        pusher_data['profile_picture'] = member.profile_picture
+                        # Don't send profile_picture - it's too large for Pusher
+                        # pusher_data['profile_picture'] = member.profile_picture
                         pusher_data['is_frozen'] = member.is_frozen
                         pusher_data['package_start_date'] = member.package_start_date.isoformat() if member.package_start_date else None
                         
