@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, Calendar, TrendingUp } from 'lucide-react';
-import apiClient from '../utils/apiClient';
+import apiClient from '../services/api';
 
 const MemberAttendanceHistory = ({ memberId }) => {
   const [attendance, setAttendance] = useState([]);
