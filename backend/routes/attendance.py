@@ -305,14 +305,45 @@ def get_currently_inside():
 @jwt_required()
 def get_dashboard_summary():
     try:
-        today = datetime.utcnow().date()
-        today_checkins = db.session.query(func.count(AttendanceRecord.id)).filter(func.date(AttendanceRecord.check_in_time) == today).scalar() or 0
+        # Use timezone-aware datetime for accurate date comparison
+        from datetime import timezone as tz
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
+        
+        # Log for debugging
+        current_app.logger.info(f"Dashboard summary requested for date: {today} (UTC: {now_utc})")
+        
+        # Query using date extraction from timezone-aware timestamps
+        today_checkins = db.session.query(func.count(AttendanceRecord.id)).filter(
+            func.date(AttendanceRecord.check_in_time) == today
+        ).scalar() or 0
+        
+        current_app.logger.info(f"Today's check-ins count: {today_checkins}")
+        
+        # Also log a sample of recent records for debugging
+        recent_records = db.session.query(AttendanceRecord).order_by(AttendanceRecord.check_in_time.desc()).limit(5).all()
+        for r in recent_records:
+            current_app.logger.info(f"Recent record: {r.person_name} at {r.check_in_time} (date: {r.check_in_time.date() if r.check_in_time else 'None'})")
+        
         members_inside = db.session.query(func.count(AttendanceRecord.id)).filter(and_(AttendanceRecord.person_type == 'member', AttendanceRecord.check_out_time.is_(None))).scalar() or 0
         trainers_inside = db.session.query(func.count(AttendanceRecord.id)).filter(and_(AttendanceRecord.person_type == 'trainer', AttendanceRecord.check_out_time.is_(None))).scalar() or 0
         completed = db.session.query(AttendanceRecord).filter(and_(func.date(AttendanceRecord.check_in_time) == today, AttendanceRecord.check_out_time.isnot(None), AttendanceRecord.stay_duration.isnot(None), AttendanceRecord.stay_duration >= 0)).all()
         avg_stay = int(sum([r.stay_duration for r in completed]) / len(completed)) if completed else 0
-        return jsonify({'success': True, 'today_checkins': today_checkins, 'members_inside': members_inside, 'trainers_inside': trainers_inside, 'avg_stay_today': avg_stay, 'avg_stay_formatted': format_stay_duration(avg_stay)}), 200
+        
+        result = {
+            'success': True, 
+            'today_checkins': today_checkins, 
+            'members_inside': members_inside, 
+            'trainers_inside': trainers_inside, 
+            'avg_stay_today': avg_stay, 
+            'avg_stay_formatted': format_stay_duration(avg_stay)
+        }
+        
+        current_app.logger.info(f"Dashboard summary result: {result}")
+        
+        return jsonify(result), 200
     except Exception as e:
+        current_app.logger.error(f"Error in dashboard summary: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/analytics/weekly', methods=['GET'])
@@ -726,12 +757,18 @@ def health_check():
 def get_daily_summary():
     """Get daily attendance summary - generated on-the-fly from attendance records."""
     try:
+        # Use timezone-aware datetime
+        from datetime import timezone as tz
+        
         # Get date parameter (default to today)
         date_str = request.args.get('date')
         if date_str:
             target_date = datetime.fromisoformat(date_str).date()
         else:
-            target_date = datetime.utcnow().date()
+            now_utc = datetime.now(tz.utc)
+            target_date = now_utc.date()
+        
+        current_app.logger.info(f"Daily summary requested for date: {target_date}")
         
         # Get person type filter
         person_type = request.args.get('person_type')
@@ -742,6 +779,13 @@ def get_daily_summary():
             query = query.filter(AttendanceRecord.person_type == person_type)
         
         records = query.all()
+        
+        current_app.logger.info(f"Found {len(records)} attendance records for {target_date}")
+        
+        # Log sample records for debugging
+        if len(records) > 0:
+            for r in records[:3]:
+                current_app.logger.info(f"Sample record: {r.person_name} at {r.check_in_time}")
         
         # Group by person to create summary
         person_summary = {}
