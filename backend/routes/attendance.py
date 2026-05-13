@@ -724,10 +724,8 @@ def health_check():
 @attendance_bp.route('/daily-summary', methods=['GET'])
 @jwt_required()
 def get_daily_summary():
-    """Get daily attendance summary - one record per person per day."""
+    """Get daily attendance summary - generated on-the-fly from attendance records."""
     try:
-        from models.daily_attendance_summary import DailyAttendanceSummary
-        
         # Get date parameter (default to today)
         date_str = request.args.get('date')
         if date_str:
@@ -738,20 +736,99 @@ def get_daily_summary():
         # Get person type filter
         person_type = request.args.get('person_type')
         
-        # Build query
-        query = DailyAttendanceSummary.query.filter(DailyAttendanceSummary.date == target_date)
+        # Fetch all attendance records for today
+        query = AttendanceRecord.query.filter(func.date(AttendanceRecord.check_in_time) == target_date)
         if person_type:
-            query = query.filter(DailyAttendanceSummary.person_type == person_type)
+            query = query.filter(AttendanceRecord.person_type == person_type)
         
-        # Get results
-        summaries = query.order_by(DailyAttendanceSummary.person_name).all()
+        records = query.all()
+        
+        # Group by person to create summary
+        person_summary = {}
+        
+        for record in records:
+            person_key = (record.person_id, record.person_type)
+            
+            if person_key not in person_summary:
+                # Get person name
+                person_name = record.person_name
+                if not person_name:
+                    if record.person_type == 'member':
+                        person = MemberProfile.query.get(record.person_id)
+                        person_name = person.full_name if person and person.full_name else f"Member {record.person_id[:8]}"
+                    elif record.person_type == 'trainer':
+                        person = TrainerProfile.query.get(record.person_id)
+                        person_name = person.full_name if person and person.full_name else f"Trainer {record.person_id[:8]}"
+                    else:
+                        person_name = f"{record.person_type.capitalize()} {record.person_id[:8]}"
+                
+                # Get payment status for members
+                payment_status = 'N/A'
+                if record.person_type == 'member':
+                    member = MemberProfile.query.get(record.person_id)
+                    if member:
+                        # Check if package is expired
+                        if member.package_expiry_date:
+                            from datetime import timezone as tz
+                            now = datetime.now(tz.utc)
+                            expiry = member.package_expiry_date
+                            if expiry.tzinfo is None:
+                                expiry = expiry.replace(tzinfo=tz.utc)
+                            
+                            if expiry < now:
+                                payment_status = 'EXPIRED'
+                            else:
+                                payment_status = 'PAID'
+                        else:
+                            payment_status = 'PENDING'
+                
+                person_summary[person_key] = {
+                    'id': record.id,
+                    'person_id': record.person_id,
+                    'person_name': person_name,
+                    'person_type': record.person_type,
+                    'status': 'Present',
+                    'first_check_in': record.check_in_time,
+                    'last_check_out': record.check_out_time,
+                    'total_time_minutes': record.stay_duration or 0,
+                    'visit_count': 1,
+                    'payment_status': payment_status
+                }
+            else:
+                # Update existing summary
+                summary = person_summary[person_key]
+                summary['visit_count'] += 1
+                
+                # Update first check-in if earlier
+                if record.check_in_time < summary['first_check_in']:
+                    summary['first_check_in'] = record.check_in_time
+                
+                # Update last check-out if later
+                if record.check_out_time:
+                    if not summary['last_check_out'] or record.check_out_time > summary['last_check_out']:
+                        summary['last_check_out'] = record.check_out_time
+                
+                # Add to total time
+                if record.stay_duration:
+                    summary['total_time_minutes'] += record.stay_duration
+        
+        # Convert to list and format timestamps
+        summaries = []
+        for summary in person_summary.values():
+            summary['first_check_in'] = summary['first_check_in'].isoformat() if summary['first_check_in'] else None
+            summary['last_check_out'] = summary['last_check_out'].isoformat() if summary['last_check_out'] else None
+            summaries.append(summary)
+        
+        # Sort by name
+        summaries.sort(key=lambda x: x['person_name'])
         
         return jsonify({
             'success': True,
             'date': target_date.isoformat(),
             'count': len(summaries),
-            'summaries': [s.to_dict() for s in summaries]
+            'summaries': summaries
         }), 200
+        
     except Exception as e:
         current_app.logger.error(f"Error in get_daily_summary: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e), 'summaries': []}), 200
