@@ -2,7 +2,18 @@
 Test script to check attendance data in database
 Run this on PythonAnywhere to debug the issue
 """
-from app import app
+import sys
+import os
+
+# Try to import the PythonAnywhere app first
+try:
+    from app_pythonanywhere import app
+except ImportError:
+    try:
+        from app_no_websocket import app
+    except ImportError:
+        from app import app
+
 from database import db
 from models.attendance_record import AttendanceRecord
 from datetime import datetime, timezone as tz
