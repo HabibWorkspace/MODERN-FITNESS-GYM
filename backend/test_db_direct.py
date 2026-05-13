@@ -16,9 +16,19 @@ if not env_path.exists():
     env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-# Get database URL
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///fitnix.db')
+# Get database URL - use absolute path for SQLite
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///instance/fitnix.db')
+
+# Convert relative path to absolute for SQLite
+if DATABASE_URL.startswith('sqlite:///'):
+    db_path = DATABASE_URL.replace('sqlite:///', '')
+    if not db_path.startswith('/'):
+        # Relative path - make it absolute
+        db_path = os.path.join(os.path.dirname(__file__), db_path)
+    DATABASE_URL = f'sqlite:///{db_path}'
+
 print(f"Database URL: {DATABASE_URL}")
+print(f"Database path: {db_path if 'db_path' in locals() else 'N/A'}")
 
 # Create engine and session
 engine = create_engine(DATABASE_URL)
