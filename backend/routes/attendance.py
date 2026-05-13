@@ -39,8 +39,18 @@ def sync_log_from_local():
         if not all([device_user_id, timestamp_str]):
             return jsonify({'error': 'Missing required fields'}), 400
         
-        # Parse timestamp
+        # Parse timestamp and ensure it's UTC
+        from datetime import timezone as tz
         timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        
+        # If timestamp is naive (no timezone), assume it's UTC
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=tz.utc)
+        
+        # Convert to UTC if it has a different timezone
+        timestamp = timestamp.astimezone(tz.utc)
+        
+        current_app.logger.info(f"Parsed timestamp: {timestamp} (UTC)")
         
         # Check if mapping exists
         mapping = DeviceUserMapping.query.filter_by(device_user_id=device_user_id).first()
@@ -67,14 +77,14 @@ def sync_log_from_local():
             person = TrainerProfile.query.get(mapping.person_id)
             person_name = person.full_name if person and person.full_name else None
         
-        # Create new attendance record (device_serial is optional, default to "ANDROID_SYNC")
+        # Create new attendance record with UTC timestamp
         record = AttendanceRecord(
             person_id=mapping.person_id,
             person_type=mapping.person_type,
             person_name=person_name,
-            check_in_time=timestamp,
+            check_in_time=timestamp,  # Now guaranteed to be UTC
             device_user_id=device_user_id,
-            device_serial=device_serial or "ANDROID_SYNC"  # Default if not provided
+            device_serial=device_serial or "ANDROID_SYNC"
         )
         
         db.session.add(record)
