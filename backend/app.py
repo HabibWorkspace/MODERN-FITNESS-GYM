@@ -221,72 +221,27 @@ def create_app(config=None):
     with app.app_context():
         db.create_all()
     
-    # Initialize attendance service
-    attendance_service = None
+    # Initialize Pusher service for real-time notifications (Android sync will use this)
     try:
-        from services.biometric_service import BiometricDeviceClient
-        from services.attendance_service import AttendanceService
-        from services.notification_service import NotificationService
         from services.pusher_service import PusherService
         
-        app.logger.info("Initializing attendance service...")
-        
-        # Create biometric device client
-        device_ip = os.getenv('BIOMETRIC_DEVICE_IP', '192.168.0.201')
-        device_port = int(os.getenv('BIOMETRIC_DEVICE_PORT', 4370))
-        device_client = BiometricDeviceClient(ip=device_ip, port=device_port)
-        
-        # Create notification service
-        notification_service = NotificationService(socketio=socketio)
-        
-        # Create Pusher service for real-time notifications
         pusher_service = PusherService(
             app_id=os.getenv('PUSHER_APP_ID'),
             key=os.getenv('PUSHER_KEY'),
             secret=os.getenv('PUSHER_SECRET'),
             cluster=os.getenv('PUSHER_CLUSTER', 'mt1')
         )
-        
-        # Create attendance service with dependencies
-        with app.app_context():
-            attendance_service = AttendanceService(
-                device_client=device_client,
-                db_session=db.session,
-                notification_emitter=notification_service,
-                app=app,
-                pusher_service=pusher_service
-            )
-            
-            # Start sync loop (3-second interval for near-instant notifications)
-            attendance_service.start_sync_loop(interval_seconds=3)
-            
-            app.logger.info("Attendance service initialized and sync loop started")
-        
+        app.logger.info("Pusher service initialized for Android sync notifications")
     except Exception as e:
-        app.logger.error(f"Failed to initialize attendance service: {str(e)}", exc_info=True)
-        attendance_service = None
+        app.logger.error(f"Failed to initialize Pusher service: {str(e)}", exc_info=True)
+        pusher_service = None
     
-    # Store attendance service and device client in app config for access in routes
-    app.config['attendance_service'] = attendance_service
+    # Store Pusher service in app config for access in routes
     app.config['pusher_service'] = pusher_service if 'pusher_service' in locals() else None
-    if 'device_client' in locals():
-        app.config['biometric_device_client'] = device_client
     
-    # Register shutdown handler for graceful cleanup
-    def shutdown_handler():
-        """Handle graceful shutdown of attendance service."""
-        try:
-            if attendance_service and attendance_service._is_running:
-                app.logger.info("Shutting down attendance service...")
-                attendance_service.stop_sync_loop()
-                if attendance_service.device_client.is_connected():
-                    attendance_service.device_client.disconnect()
-                app.logger.info("Attendance service shut down successfully")
-        except Exception as e:
-            app.logger.error(f"Error during attendance service shutdown: {str(e)}", exc_info=True)
-    
-    import atexit
-    atexit.register(shutdown_handler)
+    # Note: PC-based attendance sync removed - using Android sync only
+    app.config['attendance_service'] = None
+    app.config['biometric_device_client'] = None
     
     return app, socketio
 
@@ -295,6 +250,5 @@ if __name__ == '__main__':
     app, socketio_instance = create_app()
     port = int(os.getenv('PORT', 5000))
     socketio_instance.run(app, host='0.0.0.0', port=port, debug=os.getenv('FLASK_ENV') == 'development', use_reloader=False)
-else:
-    # For gunicorn
-    app, socketio_instance = create_app()
+# For gunicorn/production - only create app when explicitly requested
+# Don't auto-create at module import to avoid double initialization

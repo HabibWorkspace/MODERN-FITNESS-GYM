@@ -167,7 +167,10 @@ def sync_log_from_local():
 @jwt_required()
 def get_today_attendance():
     try:
-        today = datetime.utcnow().date()
+        from datetime import timezone as tz
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
+        
         query = AttendanceRecord.query.filter(func.date(AttendanceRecord.check_in_time) == today)
         if request.args.get('person_type'):
             query = query.filter(AttendanceRecord.person_type == request.args.get('person_type'))
@@ -311,6 +314,62 @@ def get_currently_inside():
         current_app.logger.error(f"Error in get_currently_inside: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e), 'members': [], 'trainers': [], 'total_inside': 0, 'recent_events': []}), 200
 
+@attendance_bp.route('/daily-summary', methods=['GET'])
+@jwt_required()
+def get_daily_summary():
+    """Get today's attendance summary with timezone-aware date handling."""
+    try:
+        from datetime import timezone as tz
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
+        
+        current_app.logger.info(f"Daily summary requested for date: {today} (UTC: {now_utc})")
+        
+        # Query using date extraction from timezone-aware timestamps
+        today_checkins = db.session.query(func.count(AttendanceRecord.id)).filter(
+            func.date(AttendanceRecord.check_in_time) == today
+        ).scalar() or 0
+        
+        current_app.logger.info(f"Today's check-ins count: {today_checkins}")
+        
+        members_inside = db.session.query(func.count(AttendanceRecord.id)).filter(and_(
+            AttendanceRecord.person_type == 'member', 
+            AttendanceRecord.check_out_time.is_(None),
+            func.date(AttendanceRecord.check_in_time) == today
+        )).scalar() or 0
+        
+        trainers_inside = db.session.query(func.count(AttendanceRecord.id)).filter(and_(
+            AttendanceRecord.person_type == 'trainer', 
+            AttendanceRecord.check_out_time.is_(None),
+            func.date(AttendanceRecord.check_in_time) == today
+        )).scalar() or 0
+        
+        completed = db.session.query(AttendanceRecord).filter(and_(
+            func.date(AttendanceRecord.check_in_time) == today, 
+            AttendanceRecord.check_out_time.isnot(None), 
+            AttendanceRecord.stay_duration.isnot(None), 
+            AttendanceRecord.stay_duration >= 0
+        )).all()
+        
+        avg_stay = int(sum([r.stay_duration for r in completed]) / len(completed)) if completed else 0
+        
+        result = {
+            'success': True, 
+            'date': today.isoformat(),
+            'today_checkins': today_checkins, 
+            'members_inside': members_inside, 
+            'trainers_inside': trainers_inside, 
+            'avg_stay_today': avg_stay, 
+            'avg_stay_formatted': format_stay_duration(avg_stay)
+        }
+        
+        current_app.logger.info(f"Daily summary result: {result}")
+        
+        return jsonify(result), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in daily summary: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
 @attendance_bp.route('/dashboard/summary', methods=['GET'])
 @jwt_required()
 def get_dashboard_summary():
@@ -360,8 +419,10 @@ def get_dashboard_summary():
 @jwt_required()
 def get_weekly_analytics():
     try:
+        from datetime import timezone as tz
         week_offset = request.args.get('week_offset', 0, type=int)
-        today = datetime.utcnow().date()
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
         week_start = today - timedelta(days=today.weekday()) - timedelta(weeks=week_offset)
         week_end = week_start + timedelta(days=6)
         records = db.session.query(func.date(AttendanceRecord.check_in_time).label('date'), func.count(AttendanceRecord.id).label('count')).filter(and_(func.date(AttendanceRecord.check_in_time) >= week_start, func.date(AttendanceRecord.check_in_time) <= week_end)).group_by(func.date(AttendanceRecord.check_in_time)).all()
@@ -376,8 +437,10 @@ def get_weekly_analytics():
 @jwt_required()
 def get_monthly_analytics():
     try:
+        from datetime import timezone as tz
         month_offset = request.args.get('month_offset', 0, type=int)
-        today = datetime.utcnow().date()
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
         month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         for _ in range(month_offset):
             month_start = (month_start - timedelta(days=1)).replace(day=1)
@@ -397,9 +460,11 @@ def get_monthly_analytics():
 @jwt_required()
 def get_top_members():
     try:
+        from datetime import timezone as tz
         limit = request.args.get('limit', 10, type=int)
         month_offset = request.args.get('month_offset', 0, type=int)
-        today = datetime.utcnow().date()
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
         month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         for _ in range(month_offset):
             month_start = (month_start - timedelta(days=1)).replace(day=1)
@@ -432,8 +497,10 @@ def get_top_members():
 @jwt_required()
 def get_average_stay():
     try:
+        from datetime import timezone as tz
         period = request.args.get('period', 'day')
-        today = datetime.utcnow().date()
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
         start_date = today if period == 'day' else (today - timedelta(days=today.weekday()) if period == 'week' else today.replace(day=1))
         records = db.session.query(AttendanceRecord).filter(and_(func.date(AttendanceRecord.check_in_time) >= start_date, AttendanceRecord.check_out_time.isnot(None))).all()
         if not records:
@@ -449,11 +516,13 @@ def get_average_stay():
 def get_monthly_attendance_records():
     """Get monthly attendance records for all members/trainers with aggregated stats."""
     try:
+        from datetime import timezone as tz
         # Get month parameter (default to current month)
         month_offset = request.args.get('month_offset', 0, type=int)
         search_query = request.args.get('search', '').strip().lower()
         
-        today = datetime.utcnow().date()
+        now_utc = datetime.now(tz.utc)
+        today = now_utc.date()
         # Calculate month start
         month_start = today.replace(day=1)
         for _ in range(month_offset):
@@ -761,128 +830,3 @@ def health_check():
             'error': str(e)
         }), 200
 
-
-@attendance_bp.route('/daily-summary', methods=['GET'])
-@jwt_required()
-def get_daily_summary():
-    """Get daily attendance summary - generated on-the-fly from attendance records."""
-    try:
-        # Use timezone-aware datetime
-        from datetime import timezone as tz
-        
-        # Get date parameter (default to today)
-        date_str = request.args.get('date')
-        if date_str:
-            target_date = datetime.fromisoformat(date_str).date()
-        else:
-            now_utc = datetime.now(tz.utc)
-            target_date = now_utc.date()
-        
-        current_app.logger.info(f"Daily summary requested for date: {target_date}")
-        
-        # Get person type filter
-        person_type = request.args.get('person_type')
-        
-        # Fetch all attendance records for today
-        query = AttendanceRecord.query.filter(func.date(AttendanceRecord.check_in_time) == target_date)
-        if person_type:
-            query = query.filter(AttendanceRecord.person_type == person_type)
-        
-        records = query.all()
-        
-        current_app.logger.info(f"Found {len(records)} attendance records for {target_date}")
-        
-        # Log sample records for debugging
-        if len(records) > 0:
-            for r in records[:3]:
-                current_app.logger.info(f"Sample record: {r.person_name} at {r.check_in_time}")
-        
-        # Group by person to create summary
-        person_summary = {}
-        
-        for record in records:
-            person_key = (record.person_id, record.person_type)
-            
-            if person_key not in person_summary:
-                # Get person name
-                person_name = record.person_name
-                if not person_name:
-                    if record.person_type == 'member':
-                        person = MemberProfile.query.get(record.person_id)
-                        person_name = person.full_name if person and person.full_name else f"Member {record.person_id[:8]}"
-                    elif record.person_type == 'trainer':
-                        person = TrainerProfile.query.get(record.person_id)
-                        person_name = person.full_name if person and person.full_name else f"Trainer {record.person_id[:8]}"
-                    else:
-                        person_name = f"{record.person_type.capitalize()} {record.person_id[:8]}"
-                
-                # Get payment status for members
-                payment_status = 'N/A'
-                if record.person_type == 'member':
-                    member = MemberProfile.query.get(record.person_id)
-                    if member:
-                        # Check if package is expired
-                        if member.package_expiry_date:
-                            from datetime import timezone as tz
-                            now = datetime.now(tz.utc)
-                            expiry = member.package_expiry_date
-                            if expiry.tzinfo is None:
-                                expiry = expiry.replace(tzinfo=tz.utc)
-                            
-                            if expiry < now:
-                                payment_status = 'EXPIRED'
-                            else:
-                                payment_status = 'PAID'
-                        else:
-                            payment_status = 'PENDING'
-                
-                person_summary[person_key] = {
-                    'id': record.id,
-                    'person_id': record.person_id,
-                    'person_name': person_name,
-                    'person_type': record.person_type,
-                    'status': 'Present',
-                    'first_check_in': record.check_in_time,
-                    'last_check_out': record.check_out_time,
-                    'total_time_minutes': record.stay_duration or 0,
-                    'visit_count': 1,
-                    'payment_status': payment_status
-                }
-            else:
-                # Update existing summary
-                summary = person_summary[person_key]
-                summary['visit_count'] += 1
-                
-                # Update first check-in if earlier
-                if record.check_in_time < summary['first_check_in']:
-                    summary['first_check_in'] = record.check_in_time
-                
-                # Update last check-out if later
-                if record.check_out_time:
-                    if not summary['last_check_out'] or record.check_out_time > summary['last_check_out']:
-                        summary['last_check_out'] = record.check_out_time
-                
-                # Add to total time
-                if record.stay_duration:
-                    summary['total_time_minutes'] += record.stay_duration
-        
-        # Convert to list and format timestamps
-        summaries = []
-        for summary in person_summary.values():
-            summary['first_check_in'] = summary['first_check_in'].isoformat() if summary['first_check_in'] else None
-            summary['last_check_out'] = summary['last_check_out'].isoformat() if summary['last_check_out'] else None
-            summaries.append(summary)
-        
-        # Sort by name
-        summaries.sort(key=lambda x: x['person_name'])
-        
-        return jsonify({
-            'success': True,
-            'date': target_date.isoformat(),
-            'count': len(summaries),
-            'summaries': summaries
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"Error in get_daily_summary: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e), 'summaries': []}), 200
