@@ -433,8 +433,8 @@ const AdminAttendance = () => {
           cluster: 'mt1',
           encrypted: true,
           forceTLS: true,
-          // Enable fallback transports for environments with WebSocket restrictions
-          enabledTransports: ['ws', 'wss'],
+          // Enable all transports for maximum compatibility
+          enabledTransports: ['ws', 'wss', 'xhr_streaming', 'xhr_polling'],
           disabledTransports: [],
           // Connection timeout and retry settings
           activityTimeout: 120000, // 2 minutes
@@ -452,26 +452,22 @@ const AdminAttendance = () => {
         // Connection state handlers
         pusherRef.current.connection.bind('connected', () => {
           console.log('✓ Pusher connected successfully');
-          console.log('Connection state:', pusherRef.current.connection.state);
         });
 
         pusherRef.current.connection.bind('disconnected', () => {
-          console.log('✗ Pusher disconnected');
-          console.log('Connection state:', pusherRef.current.connection.state);
+          console.log('✗ Pusher disconnected - using polling fallback');
         });
 
         pusherRef.current.connection.bind('unavailable', () => {
-          console.error('✗ Pusher unavailable - WebSocket connection failed');
-          console.log('This may be due to network restrictions or firewall blocking WebSockets');
+          console.warn('⚠ Pusher unavailable - using polling fallback');
         });
 
         pusherRef.current.connection.bind('failed', () => {
-          console.error('✗ Pusher connection failed permanently');
+          console.error('✗ Pusher connection failed - using polling fallback');
         });
 
         pusherRef.current.connection.bind('error', (err) => {
           console.error('Pusher connection error:', err);
-          console.log('Error details:', JSON.stringify(err, null, 2));
         });
 
         // Channel subscription handlers
@@ -485,7 +481,7 @@ const AdminAttendance = () => {
 
         // Listen for check-in events
         channelRef.current.bind('check-in', (data) => {
-          console.log('Check-in event received:', data);
+          console.log('✓ Check-in event received:', data);
           
           // Show custom rich toast notification
           showCheckInToast(data);
@@ -497,7 +493,7 @@ const AdminAttendance = () => {
 
         // Listen for check-out events
         channelRef.current.bind('check-out', (data) => {
-          console.log('Check-out event received:', data);
+          console.log('✓ Check-out event received:', data);
           
           // Show custom rich toast notification
           showCheckOutToast(data);
@@ -507,31 +503,38 @@ const AdminAttendance = () => {
           setLastUpdate(new Date());
         });
 
-        console.log('Pusher initialized and subscribed to attendance-updates');
+        console.log('✓ Pusher initialized and subscribed to attendance-updates');
       } catch (error) {
         console.error('Failed to initialize Pusher:', error);
-        setPusherConnected(false);
       }
     };
 
     initPusher();
     
-    // Fallback polling every 60 seconds (in case Pusher fails)
+    // Aggressive polling every 10 seconds (Pusher fallback)
     const pollingInterval = setInterval(() => {
       fetchAllData();
       fetchDeviceStatus();
       setLastUpdate(new Date());
-    }, 60000); // 60 seconds
+    }, 10000); // 10 seconds for real-time feel
     
     // Cleanup on unmount
     return () => {
       clearInterval(pollingInterval);
       if (channelRef.current) {
-        channelRef.current.unbind_all();
-        pusherRef.current.unsubscribe('attendance-updates');
+        try {
+          channelRef.current.unbind_all();
+          pusherRef.current.unsubscribe('attendance-updates');
+        } catch (e) {
+          console.log('Cleanup error (ignored):', e);
+        }
       }
       if (pusherRef.current) {
-        pusherRef.current.disconnect();
+        try {
+          pusherRef.current.disconnect();
+        } catch (e) {
+          console.log('Disconnect error (ignored):', e);
+        }
       }
     };
   }, []);
