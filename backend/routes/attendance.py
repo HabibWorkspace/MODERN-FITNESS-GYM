@@ -353,6 +353,48 @@ def get_daily_summary():
         
         avg_stay = int(sum([r.stay_duration for r in completed]) / len(completed)) if completed else 0
         
+        # Get all today's records for the table
+        all_today_records = db.session.query(AttendanceRecord).filter(
+            func.date(AttendanceRecord.check_in_time) == today
+        ).order_by(AttendanceRecord.check_in_time.desc()).all()
+        
+        # Group by person to get first check-in and payment status
+        summaries = {}
+        for record in all_today_records:
+            key = record.person_id
+            if key not in summaries:
+                # Get member/trainer details
+                person_name = record.person_name
+                payment_status = 'N/A'
+                
+                if record.person_type == 'member':
+                    member = MemberProfile.query.get(record.person_id)
+                    if member:
+                        # Check if membership is active
+                        if member.package_expiry_date:
+                            from datetime import timezone as tz
+                            now = datetime.now(tz.utc)
+                            expiry = member.package_expiry_date
+                            if expiry.tzinfo is None:
+                                expiry = expiry.replace(tzinfo=tz.utc)
+                            
+                            if expiry < now:
+                                payment_status = 'EXPIRED'
+                            else:
+                                payment_status = 'COMPLETED'
+                        else:
+                            payment_status = 'PENDING'
+                
+                summaries[key] = {
+                    'id': record.id,
+                    'person_id': record.person_id,
+                    'person_name': person_name,
+                    'person_type': record.person_type,
+                    'status': 'Present',
+                    'first_check_in': record.check_in_time.isoformat() if record.check_in_time else None,
+                    'payment_status': payment_status
+                }
+        
         result = {
             'success': True, 
             'date': today.isoformat(),
@@ -360,14 +402,16 @@ def get_daily_summary():
             'members_inside': members_inside, 
             'trainers_inside': trainers_inside, 
             'avg_stay_today': avg_stay, 
-            'avg_stay_formatted': format_stay_duration(avg_stay)
+            'avg_stay_formatted': format_stay_duration(avg_stay),
+            'summaries': list(summaries.values())
         }
         
-        current_app.logger.info(f"Daily summary result: {result}")
+        current_app.logger.info(f"Daily summary result: {len(summaries)} records")
         
         return jsonify(result), 200
     except Exception as e:
         current_app.logger.error(f"Error in daily summary: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/dashboard/summary', methods=['GET'])

@@ -549,15 +549,38 @@ const AdminAttendance = () => {
         fetch('/api/attendance/analytics/weekly', { headers }),
         fetch('/api/attendance/daily-summary', { headers })
       ]);
-      if (summaryRes.ok) setSummary(await summaryRes.json());
+      
+      if (summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        setSummary(summaryData);
+        console.log('✓ Summary loaded:', summaryData);
+      }
+      
       if (liveRes.ok) {
         const liveData = await liveRes.json();
         setCurrentlyInside(liveData);
+        console.log('✓ Live data loaded:', liveData);
       }
-      if (weeklyRes.ok) setWeeklyData((await weeklyRes.json()).data || []);
-      if (dailyRes.ok) setDailySummary((await dailyRes.json()).summaries || []);
+      
+      if (weeklyRes.ok) {
+        const weeklyData = await weeklyRes.json();
+        setWeeklyData(weeklyData.data || []);
+        console.log('✓ Weekly data loaded:', weeklyData.data);
+      }
+      
+      if (dailyRes.ok) {
+        const dailyData = await dailyRes.json();
+        // Handle both formats: direct array or wrapped in summaries
+        const summaries = Array.isArray(dailyData) ? dailyData : (dailyData.summaries || []);
+        setDailySummary(summaries);
+        console.log('✓ Daily summary loaded:', summaries);
+      }
+      
       setLoading(false);
-    } catch (err) { console.error(err); setLoading(false); }
+    } catch (err) { 
+      console.error('Error fetching data:', err); 
+      setLoading(false); 
+    }
   };
 
   const fetchDeviceStatus = async () => {
