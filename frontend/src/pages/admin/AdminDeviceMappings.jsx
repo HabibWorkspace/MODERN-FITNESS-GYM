@@ -154,16 +154,16 @@ const AdminDeviceMappings = () => {
 
   return (
     <AdminLayout>
-    <div className="p-8 bg-fitnix-black min-h-screen">
+    <div className="p-4 md:p-8 bg-fitnix-black min-h-screen">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 md:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-fitnix-off-white">Device User <span className="fitnix-gradient-text">Mappings</span></h1>
-            <p className="text-fitnix-off-white/60 mt-1">Link biometric device users to members and trainers</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-fitnix-off-white">Device User <span className="fitnix-gradient-text">Mappings</span></h1>
+            <p className="text-fitnix-off-white/60 mt-1 text-sm md:text-base">Link biometric device users to members and trainers</p>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="bg-fitnix-lime text-fitnix-black px-6 py-2 rounded-lg hover:bg-fitnix-lime/90 font-semibold transition-colors"
+            className="bg-fitnix-lime text-fitnix-black px-6 py-2 rounded-lg hover:bg-fitnix-lime/90 font-semibold transition-colors w-full md:w-auto"
           >
             {showForm ? 'Cancel' : 'Add Mapping'}
           </button>
@@ -257,50 +257,96 @@ const AdminDeviceMappings = () => {
         )}
 
         <div className="bg-fitnix-charcoal border border-fitnix-dark-gray rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-fitnix-dark-gray/50 border-b border-fitnix-dark-gray">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Device User ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Person Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Member/Trainer ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mappings.length === 0 ? (
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <table className="w-full">
+              <thead className="bg-fitnix-dark-gray/50 border-b border-fitnix-dark-gray">
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-fitnix-gray">
-                    No mappings yet. Click "Add Mapping" to create one.
-                  </td>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Device User ID</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Person Type</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Member/Trainer ID</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Name</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-fitnix-lime">Actions</th>
                 </tr>
-              ) : (
-                mappings.map(mapping => {
-                  // Get the person's member_number or ID
+              </thead>
+              <tbody>
+                {mappings.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center text-fitnix-gray">
+                      No mappings yet. Click "Add Mapping" to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  mappings.map(mapping => {
+                    const person = (mapping.person_type === 'member' ? members : trainers).find(p => p.id === mapping.person_id);
+                    const displayId = person?.member_number || mapping.person_id.substring(0, 8);
+                    const displayName = mapping.person_name || person?.full_name || 'Unknown';
+                    
+                    return (
+                      <tr key={mapping.id} className="border-b border-fitnix-dark-gray hover:bg-fitnix-dark-gray/30 transition-colors">
+                        <td className="px-6 py-3 text-fitnix-off-white font-medium">{mapping.device_user_id}</td>
+                        <td className="px-6 py-3 text-fitnix-gray capitalize">{mapping.person_type}</td>
+                        <td className="px-6 py-3 text-fitnix-lime font-semibold">{displayId}</td>
+                        <td className="px-6 py-3 text-fitnix-off-white">{displayName}</td>
+                        <td className="px-6 py-3">
+                          <button
+                            onClick={() => handleDelete(mapping.id)}
+                            className="text-red-400 hover:text-red-300 text-sm font-semibold transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden">
+            {mappings.length === 0 ? (
+              <div className="px-6 py-12 text-center text-fitnix-gray">
+                No mappings yet. Click "Add Mapping" to create one.
+              </div>
+            ) : (
+              <div className="divide-y divide-fitnix-dark-gray">
+                {mappings.map(mapping => {
                   const person = (mapping.person_type === 'member' ? members : trainers).find(p => p.id === mapping.person_id);
                   const displayId = person?.member_number || mapping.person_id.substring(0, 8);
                   const displayName = mapping.person_name || person?.full_name || 'Unknown';
                   
                   return (
-                    <tr key={mapping.id} className="border-b border-fitnix-dark-gray hover:bg-fitnix-dark-gray/30 transition-colors">
-                      <td className="px-6 py-3 text-fitnix-off-white font-medium">{mapping.device_user_id}</td>
-                      <td className="px-6 py-3 text-fitnix-gray capitalize">{mapping.person_type}</td>
-                      <td className="px-6 py-3 text-fitnix-lime font-semibold">{displayId}</td>
-                      <td className="px-6 py-3 text-fitnix-off-white">{displayName}</td>
-                      <td className="px-6 py-3">
+                    <div key={mapping.id} className="p-4 hover:bg-fitnix-dark-gray/30 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="text-fitnix-off-white font-bold text-lg">{displayName}</div>
+                          <div className="text-fitnix-gray text-sm capitalize mt-1">{mapping.person_type}</div>
+                        </div>
                         <button
                           onClick={() => handleDelete(mapping.id)}
-                          className="text-red-400 hover:text-red-300 text-sm font-semibold transition-colors"
+                          className="text-red-400 hover:text-red-300 text-sm font-semibold transition-colors px-3 py-1 rounded border border-red-400/30"
                         >
                           Delete
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-fitnix-gray text-xs mb-1">Device User ID</div>
+                          <div className="text-fitnix-off-white font-medium">{mapping.device_user_id}</div>
+                        </div>
+                        <div>
+                          <div className="text-fitnix-gray text-xs mb-1">Member/Trainer ID</div>
+                          <div className="text-fitnix-lime font-semibold">{displayId}</div>
+                        </div>
+                      </div>
+                    </div>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

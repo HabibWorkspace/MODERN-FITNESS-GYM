@@ -19,7 +19,6 @@ import {
 const AdminAttendance = () => {
   const [summary, setSummary] = useState({ today_checkins: 0, members_inside: 0, trainers_inside: 0, avg_stay_today: 0 });
   const [currentlyInside, setCurrentlyInside] = useState({ members: [], trainers: [] });
-  const [weeklyData, setWeeklyData] = useState([]);
   const [dailySummary, setDailySummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deviceStatus, setDeviceStatus] = useState({ connected: false, service_running: false });
@@ -543,10 +542,9 @@ const AdminAttendance = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const [summaryRes, liveRes, weeklyRes, dailyRes] = await Promise.all([
+      const [summaryRes, liveRes, dailyRes] = await Promise.all([
         fetch('/api/attendance/dashboard/summary', { headers }),
         fetch('/api/attendance/live', { headers }),
-        fetch('/api/attendance/analytics/weekly', { headers }),
         fetch('/api/attendance/daily-summary', { headers })
       ]);
       
@@ -560,12 +558,6 @@ const AdminAttendance = () => {
         const liveData = await liveRes.json();
         setCurrentlyInside(liveData);
         console.log('✓ Live data loaded:', liveData);
-      }
-      
-      if (weeklyRes.ok) {
-        const weeklyData = await weeklyRes.json();
-        setWeeklyData(weeklyData.data || []);
-        console.log('✓ Weekly data loaded:', weeklyData.data);
       }
       
       if (dailyRes.ok) {
@@ -743,38 +735,6 @@ const AdminAttendance = () => {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Weekly Analytics - Simplified */}
-        <div className="fitnix-card-glow mb-8">
-          <h2 className="text-2xl font-bold text-fitnix-off-white mb-6 flex items-center gap-2">
-            <TrendingUp className="w-7 h-7 text-blue-400" strokeWidth={2.5} />
-            Weekly Analytics
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
-            {weeklyData && weeklyData.length > 0 ? (
-              weeklyData.map((day, idx) => (
-                <div key={idx} className="group/bar flex flex-col items-center">
-                  <div className="flex flex-col items-center mb-2">
-                    <span className="text-base font-bold text-fitnix-off-white/70 mb-1">{day.day ? day.day.substring(0, 3) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx]}</span>
-                    <span className="text-2xl font-extrabold fitnix-gradient-text">{day.count}</span>
-                  </div>
-                  <div className="bg-fitnix-charcoal rounded-full h-32 w-12 overflow-hidden border-2 border-fitnix-charcoal flex flex-col justify-end">
-                    <div 
-                      className="bg-gradient-to-t from-fitnix-lime to-green-400 rounded-full transition-all duration-1000 ease-out group-hover/bar:shadow-lg group-hover/bar:shadow-fitnix-lime/50 w-full" 
-                      style={{ height: `${Math.min(100, (day.count / 50) * 100)}%` }}
-                    >
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-7 text-center py-12">
-                <BarChart3 className="w-20 h-20 text-fitnix-charcoal mx-auto mb-4" strokeWidth={2} />
-                <p className="text-fitnix-off-white/60 font-semibold text-base">No data available</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
